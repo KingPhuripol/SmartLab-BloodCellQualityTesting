@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  # Backend API Service
+  backend:
+    build:
+      context: ./web-app/backend
+      dockerfile: Dockerfile
+    container_name: smartlab-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./smartlab.db}
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001
+    volumes:
+      - backend-data:/app/data
+    networks:
+      - smartlab-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Web Application
+  frontend:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: smartlab-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - smartlab-network
+    restart: unless-stopped
+
+volumes:
+  backend-data:
+    driver: local
+
+networks:
+  smartlab-network:
+    driver: bridge

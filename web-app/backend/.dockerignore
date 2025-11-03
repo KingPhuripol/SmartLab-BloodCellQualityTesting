@@ -1,0 +1,17 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.env
+.venv
+*.log
+.DS_Store
+data/uploads/*
+data/split_by_model/*
+data/reports/*
+!data/uploads/.gitkeep
+!data/split_by_model/.gitkeep
+!data/reports/.gitkeep

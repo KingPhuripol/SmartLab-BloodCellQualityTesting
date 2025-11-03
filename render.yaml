@@ -1,0 +1,22 @@
+# Render.com Configuration for Backend
+# Alternative to Railway for backend deployment
+
+services:
+  - type: web
+    name: smartlab-blood-cell-api
+    env: node
+    region: singapore
+    plan: starter
+    buildCommand: cd app && npm install && npm run build
+    startCommand: cd app && npm start
+    healthCheckPath: /api/pt-eqa/load
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: MAX_FILE_SIZE
+        value: "50mb"
