@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
 /**
  * Health check endpoint for Railway deployment
@@ -7,10 +7,10 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   return NextResponse.json(
     {
-      status: 'ok',
+      status: "ok",
       timestamp: new Date().toISOString(),
-      service: 'SmartLab Blood Cell Quality Testing',
-      version: '1.0.0',
+      service: "SmartLab Blood Cell Quality Testing",
+      version: "1.0.0",
     },
     { status: 200 }
   );

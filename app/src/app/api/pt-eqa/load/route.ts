@@ -19,6 +19,7 @@ export async function GET() {
 
     // Try multiple locations for data files
     const candidateDirs = [
+      path.join(workspaceRoot, "data"),
       path.join(workspaceRoot, ".."),
       path.join(workspaceRoot, "..", ".."),
       "/Users/king_phuripol/Work/SmartLab/BloodCellQualityTesting",
@@ -48,58 +49,36 @@ export async function GET() {
     }
 
     // Define all data file locations
-    const dataFiles = [
-      { path: path.join(dataRoot, "BloodData - Test01.csv"), priority: 1 },
-      { path: path.join(dataRoot, "Combined_Test_Data.csv"), priority: 1 },
-      {
-        path: path.join(
-          dataRoot,
-          "Blood Test Mockup CSVs Sept 28 2025",
-          "500-AV.csv"
-        ),
-        priority: 2,
-      },
-      {
-        path: path.join(
-          dataRoot,
-          "Blood Test Mockup CSVs Sept 28 2025",
-          "503-AV.csv"
-        ),
-        priority: 2,
-      },
-      {
-        path: path.join(
-          dataRoot,
-          "Blood Test Mockup CSVs Sept 28 2025",
-          "504-AV.csv"
-        ),
-        priority: 2,
-      },
-      {
-        path: path.join(
-          dataRoot,
-          "Blood Test Mockup CSVs Sept 28 2025",
-          "500-E.csv"
-        ),
-        priority: 3,
-      },
-      {
-        path: path.join(
-          dataRoot,
-          "Blood Test Mockup CSVs Sept 28 2025",
-          "503-E.csv"
-        ),
-        priority: 3,
-      },
-      {
-        path: path.join(
-          dataRoot,
-          "Blood Test Mockup CSVs Sept 28 2025",
-          "504-E.csv"
-        ),
-        priority: 3,
-      },
+    const dataFiles: { path: string; priority: number }[] = [];
+
+    // 1. Add root files if they exist
+    const rootFiles = ["BloodData - Test01.csv", "Combined_Test_Data.csv"];
+    for (const f of rootFiles) {
+      const p = path.join(dataRoot, f);
+      try {
+        await fs.access(p);
+        dataFiles.push({ path: p, priority: 1 });
+      } catch {}
+    }
+
+    // 2. Add files from "Blood Test Mockup CSVs Sept 28 2025" or "mockups"
+    const mockupDirs = [
+      path.join(dataRoot, "Blood Test Mockup CSVs Sept 28 2025"),
+      path.join(dataRoot, "mockups"),
     ];
+
+    for (const mockupDir of mockupDirs) {
+      try {
+        const files = await fs.readdir(mockupDir);
+        for (const f of files) {
+          if (f.endsWith(".csv")) {
+            dataFiles.push({ path: path.join(mockupDir, f), priority: 2 });
+          }
+        }
+      } catch (e) {
+        // console.warn("Could not read mockup directory:", e);
+      }
+    }
 
     // Process all available files
     const processed: UniversalProcessedData[] = [];

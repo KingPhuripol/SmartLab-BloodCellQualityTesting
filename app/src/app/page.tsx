@@ -7,84 +7,123 @@ import {
   BarChart3,
   ClipboardList,
   ArrowRight,
+  Activity,
+  FileText,
+  CheckCircle2,
+  Zap,
+  LayoutDashboard,
+  FileCheck,
 } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white">
-      {/* Hero */}
-      <section className="bg-gradient-to-br from-blue-50 to-indigo-50 border-b">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+    <div className="min-h-screen bg-slate-50 font-sans">
+      {/* Hero Section */}
+      <section className="bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <div className="text-blue-700 font-semibold text-xs tracking-wider uppercase mb-2">
-                SmartLab • Hospital Quality Informatics
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-medium mb-6 border border-blue-100">
+                <Activity className="w-4 h-4 mr-2" />
+                SmartLab • ระบบบริหารคุณภาพห้องปฏิบัติการ
               </div>
-              <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight">
-                Blood Cell Quality Testing
-                <br className="hidden md:block" />
-                PT:EQA Evaluation System
+              <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 leading-tight mb-6">
+                ระบบประเมินคุณภาพห้องปฏิบัติการโลหิตวิทยา
+                <span className="block text-blue-600 mt-2 text-3xl lg:text-4xl">
+                  (Laboratory Quality Assessment)
+                </span>
               </h1>
-              <p className="mt-4 text-gray-600 text-base md:text-lg">
-                A formal step-by-step workflow with Z‑score grading and CAPA.
+              <p className="text-lg text-slate-600 mb-8 leading-relaxed">
+                ระบบช่วยตรวจสอบความถูกต้องของผลแล็บ เปรียบเทียบค่ามาตรฐาน
+                วิเคราะห์ผลทางสถิติ (Z-Score) และออกรายงานผลให้อัตโนมัติ
+                ใช้งานง่าย แม่นยำ ลดความผิดพลาด
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link
-                  href="/login"
-                  className="px-5 py-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center"
-                >
-                  Sign in
-                </Link>
+
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   href="/pt-eqa"
-                  className="px-5 py-3 rounded-md bg-white text-blue-700 border border-blue-200 hover:bg-blue-50 inline-flex items-center"
+                  className="inline-flex justify-center items-center px-6 py-4 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md"
                 >
-                  Start PT:EQA Wizard <ArrowRight className="h-4 w-4 ml-2" />
+                  <FileSpreadsheet className="w-5 h-5 mr-2" />
+                  เริ่มการประเมิน (Start Evaluation)
                 </Link>
                 <Link
                   href="/dashboard"
-                  className="px-5 py-3 rounded-md bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                  className="inline-flex justify-center items-center px-6 py-4 rounded-lg bg-white text-slate-700 font-medium border border-slate-200 hover:bg-slate-50 transition-colors"
                 >
-                  View Dashboard
+                  <BarChart3 className="w-5 h-5 mr-2" />
+                  ดูภาพรวมผลงาน (Dashboard)
                 </Link>
               </div>
-              <div className="mt-4 text-xs text-gray-500">
-                Note: Some sections may require sign-in.
+
+              <div className="mt-8 flex items-center gap-6 text-sm text-slate-500">
+                <div className="flex items-center">
+                  <ShieldCheck className="w-4 h-4 mr-2 text-green-600" />
+                  อ้างอิงมาตรฐานสากล
+                </div>
+                <div className="flex items-center">
+                  <FileText className="w-4 h-4 mr-2 text-blue-600" />
+                  รายงานผลอัตโนมัติ
+                </div>
               </div>
             </div>
-            <div className="hidden md:block">
-              <div className="bg-white/70 backdrop-blur rounded-xl border p-6 shadow-sm">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 rounded-lg border bg-blue-50">
-                    <div className="text-2xl font-bold text-blue-700">
-                      PT:EQA
+
+            <div className="hidden lg:block">
+              <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -mr-16 -mt-16 opacity-50"></div>
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-green-50 rounded-tr-full -ml-12 -mb-12 opacity-50"></div>
+
+                <h3 className="text-lg font-semibold text-slate-800 mb-6 flex items-center">
+                  <ClipboardList className="w-5 h-5 mr-2 text-blue-600" />
+                  ขั้นตอนการทำงาน (Workflow)
+                </h3>
+
+                <div className="space-y-4">
+                  {[
+                    {
+                      step: 1,
+                      title: "นำเข้าข้อมูล (Import)",
+                      desc: "อัปโหลดไฟล์ผลแล็บ (CSV) เข้าสู่ระบบ",
+                      color: "bg-blue-100 text-blue-700",
+                    },
+                    {
+                      step: 2,
+                      title: "ตรวจสอบ (Validate)",
+                      desc: "ระบบช่วยเช็คความถูกต้องของข้อมูลเบื้องต้น",
+                      color: "bg-indigo-100 text-indigo-700",
+                    },
+                    {
+                      step: 3,
+                      title: "ประเมินผล (Evaluate)",
+                      desc: "คำนวณคะแนนและตัดเกรดคุณภาพอัตโนมัติ",
+                      color: "bg-purple-100 text-purple-700",
+                    },
+                    {
+                      step: 4,
+                      title: "รายงาน (Report)",
+                      desc: "สรุปผลการประเมินพร้อมพิมพ์รายงานส่งได้เลย",
+                      color: "bg-green-100 text-green-700",
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.step}
+                      className="flex items-start p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-blue-200 transition-colors"
+                    >
+                      <div
+                        className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${item.color} mr-4`}
+                      >
+                        {item.step}
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-slate-900">
+                          {item.title}
+                        </h4>
+                        <p className="text-sm text-slate-500 mt-1">
+                          {item.desc}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-xs text-blue-700">5-step Wizard</div>
-                  </div>
-                  <div className="p-4 rounded-lg border bg-green-50">
-                    <div className="text-2xl font-bold text-green-700">
-                      Z-Score
-                    </div>
-                    <div className="text-xs text-green-700">
-                      Thresholds ≤0.5 / ≤1 / ≤2 / ≤3
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-lg border bg-yellow-50">
-                    <div className="text-2xl font-bold text-yellow-700">
-                      CAPA
-                    </div>
-                    <div className="text-xs text-yellow-700">
-                      Review & Sign-off
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-lg border bg-purple-50">
-                    <div className="text-2xl font-bold text-purple-700">
-                      Export
-                    </div>
-                    <div className="text-xs text-purple-700">
-                      CSV for submission
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -96,86 +135,46 @@ export default function HomePage() {
       <section className="bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">
-            Highlights
+            จุดเด่นของระบบ (Highlights)
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-5 border rounded-lg bg-gray-50">
-              <ShieldCheck className="h-6 w-6 text-blue-600 mb-2" />
-              <div className="font-semibold text-gray-900">
-                Standards & Compliance
+            <div className="p-5 border rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors">
+              <CheckCircle2 className="h-8 w-8 text-blue-600 mb-3" />
+              <div className="font-semibold text-gray-900 text-lg">
+                มาตรฐานสากล
               </div>
-              <div className="text-sm text-gray-600 mt-1">
-                Aligned with PT:EQA charts.
-              </div>
-            </div>
-            <div className="p-5 border rounded-lg bg-gray-50">
-              <FileSpreadsheet className="h-6 w-6 text-green-600 mb-2" />
-              <div className="font-semibold text-gray-900">
-                CSV → Automated Evaluation
-              </div>
-              <div className="text-sm text-gray-600 mt-1">
-                Load CSVs and auto‑evaluate.
+              <div className="text-sm text-gray-600 mt-2">
+                อ้างอิงเกณฑ์การประเมินที่เป็นที่ยอมรับ (ISO/EQA Charts)
               </div>
             </div>
-            <div className="p-5 border rounded-lg bg-gray-50">
-              <BarChart3 className="h-6 w-6 text-yellow-600 mb-2" />
-              <div className="font-semibold text-gray-900">
-                Dashboard & Summaries
+            <div className="p-5 border rounded-lg bg-gray-50 hover:bg-green-50 transition-colors">
+              <Zap className="h-8 w-8 text-green-600 mb-3" />
+              <div className="font-semibold text-gray-900 text-lg">
+                รวดเร็ว & แม่นยำ
               </div>
-              <div className="text-sm text-gray-600 mt-1">
-                Pass rate, Avg |Z|, Grades.
+              <div className="text-sm text-gray-600 mt-2">
+                ลดเวลาการคำนวณด้วยระบบอัตโนมัติจากไฟล์ CSV
               </div>
             </div>
-            <div className="p-5 border rounded-lg bg-gray-50">
-              <ClipboardList className="h-6 w-6 text-purple-600 mb-2" />
-              <div className="font-semibold text-gray-900">
-                Review & Sign-off
+            <div className="p-5 border rounded-lg bg-gray-50 hover:bg-purple-50 transition-colors">
+              <LayoutDashboard className="h-8 w-8 text-purple-600 mb-3" />
+              <div className="font-semibold text-gray-900 text-lg">
+                ดูง่าย เข้าใจง่าย
               </div>
-              <div className="text-sm text-gray-600 mt-1">
-                CAPA, approval, export.
+              <div className="text-sm text-gray-600 mt-2">
+                แสดงผลในรูปแบบกราฟและตารางสรุปผลที่ชัดเจน
+              </div>
+            </div>
+            <div className="p-5 border rounded-lg bg-gray-50 hover:bg-orange-50 transition-colors">
+              <FileCheck className="h-8 w-8 text-orange-600 mb-3" />
+              <div className="font-semibold text-gray-900 text-lg">ครบวงจร</div>
+              <div className="text-sm text-gray-600 mt-2">
+                ตั้งแต่รับข้อมูล ตรวจสอบ แก้ไข (CAPA) จนถึงปิดงาน
               </div>
             </div>
           </div>
         </div>
       </section>
-
-      {/* Call to action */}
-      <section className="bg-gray-50 border-t">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div>
-            <div className="text-lg font-semibold text-gray-900">
-              Begin a formal PT:EQA session
-            </div>
-            <div className="text-sm text-gray-600">
-              Follow the steps for accuracy and full traceability.
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <Link
-              href="/pt-eqa"
-              className="px-5 py-3 rounded-md bg-blue-600 text-white hover:bg-blue-700 inline-flex items-center"
-            >
-              Open PT:EQA Wizard <ArrowRight className="h-4 w-4 ml-2" />
-            </Link>
-            <Link
-              href="/login"
-              className="px-5 py-3 rounded-md bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-            >
-              Sign in
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-white border-t">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-xs text-gray-500 flex items-center justify-between">
-          <div>
-            © {new Date().getFullYear()} SmartLab — Blood Cell Quality Testing
-          </div>
-          <div>PT:EQA • Z-score • CAPA</div>
-        </div>
-      </footer>
     </div>
   );
 }

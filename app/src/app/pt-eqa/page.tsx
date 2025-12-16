@@ -14,10 +14,14 @@ import {
   Info,
   FileCheck,
   AlertCircle,
+  Activity,
+  Search,
+  Filter,
+  RefreshCw,
+  Save,
+  FileText,
 } from "lucide-react";
-import type { ProcessedCSVData, PTEQAResult } from "@/lib/csv";
-import type { UniversalProcessedData } from "@/lib/universal-csv-processor";
-import type { PTEQASummary } from "@/lib/pt-eqa-analysis";
+import type { PTEQAResult } from "@/lib/csv";
 import { exportToCSV } from "@/lib/csv";
 import Collapsible from "@/components/Collapsible";
 import {
@@ -28,6 +32,10 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -40,7 +48,7 @@ export default function PTEQAWizardPage() {
   const [metadata, setMetadata] = useState<any>(null);
 
   const [files, setFiles] = useState<any[]>([]);
-  const [results, setResults] = useState<PTEQAResult[]>([]); // computed/displayed
+  const [results, setResults] = useState<PTEQAResult[]>([]);
   const [originalResults, setOriginalResults] = useState<PTEQAResult[]>([]);
   const [summary, setSummary] = useState<{
     passRate: number;
@@ -48,6 +56,7 @@ export default function PTEQAWizardPage() {
     gradeDistribution: Record<PTEQAResult["grade"], number>;
     totalEvaluations: number;
   } | null>(null);
+
   const [modelFilter, setModelFilter] = useState<string>("All");
   const [gradeFilter, setGradeFilter] = useState<string>("All");
   const [query, setQuery] = useState<string>("");
@@ -65,12 +74,16 @@ export default function PTEQAWizardPage() {
     MCH: 1.5,
     MCHC: 1.65,
   });
+
   const [thresholds, setThresholds] = useState({
     excellent: 0.5,
     good: 1.0,
     satisfactory: 2.0,
     unsatisfactory: 3.0,
   });
+
+  // CAPA Records (Mock)
+  const [capaRecords, setCapaRecords] = useState<Record<string, string>>({});
 
   const loadFromMockups = async () => {
     setLoading(true);
@@ -80,7 +93,9 @@ export default function PTEQAWizardPage() {
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(
-          errorData.error || errorData.message || "Failed to load PT:EQA data"
+          errorData.error ||
+            errorData.message ||
+            "ไม่สามารถโหลดข้อมูล PT:EQA ได้"
         );
       }
       const data = await res.json();
@@ -92,7 +107,7 @@ export default function PTEQAWizardPage() {
       setSummary(data.ptEqa?.summary || null);
       setStep(2);
     } catch (e: any) {
-      setError(e.message || "Unexpected error");
+      setError(e.message || "เกิดข้อผิดพลาดที่ไม่คาดคิด");
       console.error("Load error:", e);
     } finally {
       setLoading(false);
@@ -105,6 +120,7 @@ export default function PTEQAWizardPage() {
   const uniqueModels = Array.from(
     new Set(results.map((r) => r.modelCode))
   ).sort();
+
   const grades: PTEQAResult["grade"][] = [
     "Excellent",
     "Good",
@@ -112,6 +128,7 @@ export default function PTEQAWizardPage() {
     "Unsatisfactory",
     "Serious",
   ];
+
   const filteredResults = results.filter((r) => {
     const byModel = modelFilter === "All" || r.modelCode === modelFilter;
     const byGrade = gradeFilter === "All" || r.grade === gradeFilter;
@@ -139,6 +156,7 @@ export default function PTEQAWizardPage() {
         g === "Unsatisfactory" || g === "Serious" ? "Fail" : "Pass";
       return { ...r, zScore: z, grade: g, status } as PTEQAResult;
     });
+
     const gradeCounts: Record<PTEQAResult["grade"], number> = {
       Excellent: 0,
       Good: 0,
@@ -146,20 +164,24 @@ export default function PTEQAWizardPage() {
       Unsatisfactory: 0,
       Serious: 0,
     };
+
     let sumAbsZ = 0;
     updated.forEach((r) => {
       gradeCounts[r.grade]++;
       sumAbsZ += Math.abs(r.zScore);
     });
+
     const total = Math.max(updated.length, 1);
     const passCount =
       gradeCounts.Excellent + gradeCounts.Good + gradeCounts.Satisfactory;
+
     const newSummary = {
       passRate: Number(((passCount / total) * 100).toFixed(1)),
       averageZScore: Number((sumAbsZ / total).toFixed(2)),
       gradeDistribution: gradeCounts,
       totalEvaluations: updated.length,
-    } as typeof summary extends infer T ? NonNullable<T> : any;
+    };
+
     setResults(updated);
     setSummary(newSummary);
   }
@@ -184,489 +206,495 @@ export default function PTEQAWizardPage() {
     if (originalResults.length) recomputeWithCriteria(originalResults);
   }
 
+  const COLORS = {
+    Excellent: "#10b981", // green-500
+    Good: "#3b82f6", // blue-500
+    Satisfactory: "#eab308", // yellow-500
+    Unsatisfactory: "#f97316", // orange-500
+    Serious: "#ef4444", // red-500
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <FileSpreadsheet className="h-7 w-7 text-blue-600 mr-3" />
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-600 p-2 rounded-lg shadow-sm">
+              <FileSpreadsheet className="h-6 w-6 text-white" />
+            </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-                PT:EQA Evaluation Wizard
+              <h1 className="text-xl font-bold text-slate-800">
+                ระบบประเมินคุณภาพห้องปฏิบัติการ (PT:EQA)
               </h1>
-              <p className="text-xs md:text-sm text-gray-600">
-                Step-by-step process aligned with official evaluation procedures
+              <p className="text-xs text-slate-500">
+                Laboratory Quality Assessment System
               </p>
             </div>
           </div>
           <button
             onClick={() => router.push("/dashboard")}
-            className="px-3 py-2 bg-gray-100 rounded-md text-gray-700 hover:bg-gray-200"
+            className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 text-sm font-medium transition-colors flex items-center gap-2"
           >
-            Dashboard
+            <ArrowLeft className="h-4 w-4" /> กลับหน้าหลัก
           </button>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stepper */}
-        <ol className="flex items-center w-full mb-6">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <li
-              key={n}
-              className={`flex-1 flex items-center ${
-                n < step
-                  ? "text-green-600"
-                  : n === step
-                  ? "text-blue-600"
-                  : "text-gray-400"
-              }`}
-            >
-              <span
-                className={`flex items-center justify-center w-8 h-8 rounded-full border ${
-                  n < step
-                    ? "bg-green-50 border-green-400"
-                    : n === step
-                    ? "bg-blue-50 border-blue-400"
-                    : "bg-white border-gray-300"
-                }`}
+        <div className="mb-8">
+          <div className="flex items-center justify-between relative">
+            <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-slate-200 -z-10" />
+            {[
+              { n: 1, label: "เตรียมข้อมูล", sub: "Prepare" },
+              { n: 2, label: "ตรวจสอบ & เกณฑ์", sub: "Validate" },
+              { n: 3, label: "ประเมินผล", sub: "Evaluate" },
+              { n: 4, label: "ทบทวน & แก้ไข", sub: "Review & CAPA" },
+              { n: 5, label: "อนุมัติ & ส่งออก", sub: "Export" },
+            ].map((item) => (
+              <div
+                key={item.n}
+                className="flex flex-col items-center bg-slate-50 px-2"
               >
-                {n < step ? <CheckCircle2 className="h-5 w-5" /> : n}
-              </span>
-              <span className="ml-2 text-sm hidden sm:inline">
-                {n === 1 && "Prepare & Select Data"}
-                {n === 2 && "Validate & Criteria"}
-                {n === 3 && "Calculate & Grade"}
-                {n === 4 && "Review & CAPA"}
-                {n === 5 && "Approve & Export"}
-              </span>
-              {n < 5 && <div className="flex-1 h-px bg-gray-200 mx-2" />}
-            </li>
-          ))}
-        </ol>
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 font-bold transition-all duration-300 ${
+                    item.n < step
+                      ? "bg-green-500 border-green-500 text-white"
+                      : item.n === step
+                      ? "bg-blue-600 border-blue-600 text-white shadow-lg scale-110"
+                      : "bg-white border-slate-300 text-slate-400"
+                  }`}
+                >
+                  {item.n < step ? (
+                    <CheckCircle2 className="h-6 w-6" />
+                  ) : (
+                    item.n
+                  )}
+                </div>
+                <div className="mt-2 text-center">
+                  <div
+                    className={`text-sm font-bold ${
+                      item.n === step ? "text-blue-700" : "text-slate-600"
+                    }`}
+                  >
+                    {item.label}
+                  </div>
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider">
+                    {item.sub}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-md bg-red-50 text-red-700 border border-red-200">
-            {error}
+          <div className="mb-6 p-4 rounded-lg bg-red-50 text-red-700 border border-red-200 flex items-start gap-3 shadow-sm">
+            <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-bold">เกิดข้อผิดพลาด</h3>
+              <p className="text-sm mt-1">{error}</p>
+              <button
+                onClick={() => setError("")}
+                className="text-xs underline mt-2 hover:text-red-800"
+              >
+                ปิดแจ้งเตือน
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Step content */}
+        {/* Step 1: Prepare */}
         {step === 1 && (
-          <section className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Step 1 — Prepare & Select Data
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="border rounded-lg p-4">
-                <h3 className="font-medium text-gray-800 mb-2 flex items-center">
-                  <FileCheck className="h-4 w-4 mr-2 text-green-600" /> Use Real
-                  Workspace Data
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  Load actual CSV files from workspace including BloodData -
-                  Test01.csv, Combined_Test_Data.csv, and Blood Test Mockup CSVs
-                  folder.
-                </p>
-                {metadata && (
-                  <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                    <div className="font-medium text-blue-900">
-                      ✓ Previously loaded:
-                    </div>
-                    <div className="text-blue-700 mt-1">
-                      {metadata.filesLoaded?.slice(0, 3).join(", ")}
-                      {metadata.filesLoaded?.length > 3 &&
-                        ` +${metadata.filesLoaded.length - 3} more`}
-                    </div>
-                    <div className="text-blue-600 mt-1">
-                      {metadata.totalRecords || 0} records,{" "}
-                      {metadata.evaluations || 0} evaluations
-                    </div>
+          <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                  1
+                </span>
+                เตรียมและเลือกข้อมูล (Prepare Data)
+              </h2>
+              <p className="text-slate-500 mt-1 ml-10 text-sm">
+                เลือกแหล่งข้อมูลที่ต้องการนำมาประเมินผลคุณภาพ
+              </p>
+            </div>
+
+            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* System Data */}
+              <div
+                className="border-2 border-blue-100 rounded-xl p-6 hover:border-blue-400 transition-all bg-blue-50/30 cursor-pointer group"
+                onClick={loadFromMockups}
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-200 transition-colors">
+                    <FileCheck className="h-6 w-6 text-blue-600" />
                   </div>
-                )}
+                  <h3 className="font-bold text-lg text-slate-800">
+                    ดึงข้อมูลจากระบบ
+                  </h3>
+                </div>
+                <p className="text-slate-600 text-sm mb-6 leading-relaxed">
+                  ใช้ข้อมูลไฟล์ CSV ที่มีอยู่ในระบบ (Workspace) โดยอัตโนมัติ
+                  เหมาะสำหรับการทดสอบหรือการประเมินประจำรอบ
+                </p>
                 <button
                   disabled={loading}
-                  onClick={loadFromMockups}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 flex items-center gap-2"
+                  className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium transition-all shadow-sm group-hover:shadow-md"
                 >
                   {loading ? (
                     <>
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                      Loading…
+                      <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                      กำลังประมวลผล...
                     </>
                   ) : (
                     <>
-                      <FileCheck className="h-4 w-4" />
-                      Load Real Data
+                      โหลดข้อมูลทันที <ArrowRight className="h-4 w-4" />
                     </>
                   )}
                 </button>
               </div>
-              <div className="border rounded-lg p-4">
-                <h3 className="font-medium text-gray-800 mb-2 flex items-center">
-                  <Upload className="h-4 w-4 mr-2" /> Upload CSV Files
+
+              {/* Upload Data */}
+              <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 hover:border-slate-400 transition-all bg-slate-50/50 flex flex-col justify-center items-center text-center">
+                <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+                  <Upload className="h-8 w-8 text-slate-400" />
+                </div>
+                <h3 className="font-bold text-lg text-slate-800 mb-2">
+                  อัปโหลดไฟล์ใหม่
                 </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  You can also upload CSVs (same format) to run an ad-hoc
-                  evaluation.
+                <p className="text-slate-500 text-sm mb-6 max-w-xs">
+                  ลากไฟล์ CSV มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์จากคอมพิวเตอร์
                 </p>
-                <input
-                  type="file"
-                  multiple
-                  accept=".csv"
-                  className="text-sm"
-                  onChange={(e) =>
+                <button
+                  className="px-6 py-2 bg-white border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium text-sm transition-colors"
+                  onClick={() =>
                     alert(
-                      "Upload via wizard coming soon. Use mockup loader for now."
+                      "ฟีเจอร์นี้กำลังอยู่ระหว่างการพัฒนา กรุณาใช้ 'ดึงข้อมูลจากระบบ'"
                     )
                   }
-                />
+                >
+                  เลือกไฟล์...
+                </button>
               </div>
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <h3 className="font-medium text-gray-800 mb-2 flex items-center">
-                  <Info className="h-4 w-4 mr-2" /> Quick guidance
-                </h3>
-                <ul className="text-sm text-gray-700 list-disc pl-5 space-y-1">
-                  <li>Use consistent CSV format.</li>
-                  <li>Ensure Model code is present for grouping.</li>
-                  <li>Clean zeros or invalid values.</li>
-                </ul>
-                <Collapsible title="Show details" className="mt-2">
-                  <ul className="list-disc pl-5 space-y-1">
+            </div>
+
+            <div className="px-8 pb-8">
+              <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4 flex gap-3">
+                <Info className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-yellow-800">
+                  <p className="font-semibold mb-1">คำแนะนำในการเตรียมไฟล์</p>
+                  <ul className="list-disc pl-4 space-y-1 opacity-90">
+                    <li>ไฟล์ต้องเป็นรูปแบบ CSV (Comma Separated Values)</li>
                     <li>
-                      Required columns: Lab Code, Brand code, Model code,
-                      parameters.
+                      ต้องระบุ <strong>Model Code</strong>{" "}
+                      เพื่อให้ระบบจัดกลุ่มการประเมินได้ถูกต้อง
                     </li>
                     <li>
-                      Split evaluation by Model code for like-for-like
-                      comparisons.
-                    </li>
-                    <li>
-                      See full method for rationale and examples.
-                      <a
-                        href="/pt-eqa/method"
-                        className="ml-1 text-blue-600 hover:underline"
-                      >
-                        Open method
-                      </a>
+                      ตรวจสอบค่าว่าง (Null) หรือค่าศูนย์ (Zero)
+                      ที่ผิดปกติก่อนนำเข้า
                     </li>
                   </ul>
-                </Collapsible>
+                </div>
               </div>
             </div>
           </section>
         )}
 
+        {/* Step 2: Validate */}
         {step === 2 && (
-          <section className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Step 2 — Validate structure & set criteria
-            </h2>
-            {files.length === 0 ? (
-              <p className="text-sm text-gray-600">
-                No files detected. Go back and load data.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {files.map((f, i) => (
-                  <div
-                    key={i}
-                    className="border rounded-md p-3 flex items-center justify-between"
-                  >
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-800 flex items-center gap-2">
+          <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                    2
+                  </span>
+                  ตรวจสอบและกำหนดเกณฑ์ (Validate & Criteria)
+                </h2>
+                <p className="text-slate-500 mt-1 ml-10 text-sm">
+                  ตรวจสอบความสมบูรณ์ของข้อมูลและตั้งค่าเกณฑ์การยอมรับ
+                  (Acceptance Criteria)
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => resetCriteria()}
+                  className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-blue-600 border border-slate-200 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
+                >
+                  <RefreshCw className="h-3 w-3" /> คืนค่าเริ่มต้น
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* File Summary */}
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-slate-500" />
+                  สรุปข้อมูลที่นำเข้า
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {files.map((f, i) => (
+                    <div
+                      key={i}
+                      className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm text-sm"
+                    >
+                      <div
+                        className="font-medium text-slate-900 truncate"
+                        title={f.filename}
+                      >
                         {f.filename}
-                        <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
-                          {f.format}
+                      </div>
+                      <div className="flex justify-between mt-2 text-slate-500 text-xs">
+                        <span>{f.validRecords} รายการ</span>
+                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                          พร้อมใช้งาน
                         </span>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Records: {f.validRecords} / {f.totalRecords} · Models:{" "}
-                        {f.modelCodes?.join(", ") || "-"}
-                      </div>
                     </div>
-                    <div className="text-xs">
-                      {f.statistics?.measuredRBC && (
-                        <span className="inline-block px-2 py-1 bg-gray-50 border rounded">
-                          RBC μ: {f.statistics.measuredRBC.mean}
+                  ))}
+                </div>
+              </div>
+
+              {/* Criteria Settings */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Allowable Error */}
+                <div className="border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="bg-blue-100 p-1.5 rounded-md">
+                      <Activity className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <h3 className="font-bold text-slate-800">
+                      ค่าความคลาดเคลื่อนที่ยอมรับได้ (TEa)
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {Object.entries(allowableErrors).map(([k, v]) => (
+                      <div key={k} className="relative">
+                        <label className="block text-xs font-bold text-slate-500 mb-1">
+                          {k}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={v}
+                          onChange={(e) =>
+                            setAllowableErrors((prev) => ({
+                              ...prev,
+                              [k]: Number(e.target.value) || 0,
+                            }))
+                          }
+                          className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-mono text-right"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Z-Score Thresholds */}
+                <div className="border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="bg-purple-100 p-1.5 rounded-md">
+                      <Shield className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <h3 className="font-bold text-slate-800">
+                      เกณฑ์การตัดเกรด (Z-Score Thresholds)
+                    </h3>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      {
+                        label: "Excellent (ดีเยี่ยม)",
+                        color: "text-green-600",
+                        key: "excellent",
+                        bg: "bg-green-50",
+                      },
+                      {
+                        label: "Good (ดี)",
+                        color: "text-blue-600",
+                        key: "good",
+                        bg: "bg-blue-50",
+                      },
+                      {
+                        label: "Satisfactory (พอใช้)",
+                        color: "text-yellow-600",
+                        key: "satisfactory",
+                        bg: "bg-yellow-50",
+                      },
+                      {
+                        label: "Unsatisfactory (ไม่ผ่าน)",
+                        color: "text-orange-600",
+                        key: "unsatisfactory",
+                        bg: "bg-orange-50",
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.key}
+                        className={`flex items-center justify-between p-2 rounded-lg ${item.bg}`}
+                      >
+                        <span className={`text-sm font-medium ${item.color}`}>
+                          {item.label}
                         </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <div className="mt-3 p-3 rounded border bg-blue-50/60">
-                  <div className="text-sm font-medium text-blue-800 mb-1">
-                    Evaluation criteria (summary)
-                  </div>
-                  <div className="text-xs text-blue-900">
-                    |Z| thresholds: Excellent ≤0.5, Good ≤1.0, Satisfactory
-                    ≤2.0, Unsatisfactory ≤3.0, Serious &gt;3.0.
-                  </div>
-                  <Collapsible title="See details" className="mt-2">
-                    <ul className="list-disc pl-5 space-y-1 text-gray-700">
-                      <li>
-                        Apply allowable error and reference rules per parameter.
-                      </li>
-                      <li>
-                        Flag missing/invalid values and exclude from scoring.
-                      </li>
-                      <li>
-                        Method background and examples are available on the
-                        <a
-                          href="/pt-eqa/method"
-                          className="ml-1 text-blue-600 hover:underline"
-                        >
-                          Method page
-                        </a>
-                        .
-                      </li>
-                    </ul>
-                  </Collapsible>
-                  <div className="mt-3">
-                    <div className="text-xs font-medium text-gray-800 mb-1">
-                      Edit criteria
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                      {/* Allowable errors table */}
-                      <div className="border rounded p-2 bg-white">
-                        <div className="text-xs text-gray-600 mb-2">
-                          Allowable error per parameter
-                        </div>
-                        <div className="grid grid-cols-4 gap-2 text-xs">
-                          {Object.entries(allowableErrors).map(([k, v]) => (
-                            <label key={k} className="flex items-center gap-2">
-                              <span className="w-14 text-gray-700">{k}</span>
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={v}
-                                onChange={(e) =>
-                                  setAllowableErrors((prev) => ({
-                                    ...prev,
-                                    [k]: Number(e.target.value) || 0,
-                                  }))
-                                }
-                                className="flex-1 border rounded px-2 py-1"
-                              />
-                            </label>
-                          ))}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-400">≤</span>
+                          <input
+                            type="number"
+                            step="0.1"
+                            // @ts-ignore
+                            value={thresholds[item.key]}
+                            onChange={(e) =>
+                              setThresholds({
+                                ...thresholds,
+                                [item.key]: Number(e.target.value) || 0,
+                              })
+                            }
+                            className="w-20 border border-slate-300 rounded px-2 py-1 text-sm text-right focus:ring-2 focus:ring-blue-500 outline-none"
+                          />
                         </div>
                       </div>
-                      {/* Thresholds */}
-                      <div className="border rounded p-2 bg-white">
-                        <div className="text-xs text-gray-600 mb-2">
-                          Z-score grading thresholds (by |Z|)
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <label className="flex items-center gap-2">
-                            <span className="w-28 text-gray-700">
-                              Excellent ≤
-                            </span>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={thresholds.excellent}
-                              onChange={(e) =>
-                                setThresholds({
-                                  ...thresholds,
-                                  excellent: Number(e.target.value) || 0,
-                                })
-                              }
-                              className="flex-1 border rounded px-2 py-1"
-                            />
-                          </label>
-                          <label className="flex items-center gap-2">
-                            <span className="w-28 text-gray-700">Good ≤</span>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={thresholds.good}
-                              onChange={(e) =>
-                                setThresholds({
-                                  ...thresholds,
-                                  good: Number(e.target.value) || 0,
-                                })
-                              }
-                              className="flex-1 border rounded px-2 py-1"
-                            />
-                          </label>
-                          <label className="flex items-center gap-2">
-                            <span className="w-28 text-gray-700">
-                              Satisfactory ≤
-                            </span>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={thresholds.satisfactory}
-                              onChange={(e) =>
-                                setThresholds({
-                                  ...thresholds,
-                                  satisfactory: Number(e.target.value) || 0,
-                                })
-                              }
-                              className="flex-1 border rounded px-2 py-1"
-                            />
-                          </label>
-                          <label className="flex items-center gap-2">
-                            <span className="w-28 text-gray-700">
-                              Unsatisfactory ≤
-                            </span>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={thresholds.unsatisfactory}
-                              onChange={(e) =>
-                                setThresholds({
-                                  ...thresholds,
-                                  unsatisfactory: Number(e.target.value) || 0,
-                                })
-                              }
-                              className="flex-1 border rounded px-2 py-1"
-                            />
-                          </label>
-                          <div className="col-span-2 text-[11px] text-gray-500">
-                            Serious &gt; Unsatisfactory threshold
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        onClick={() => resetCriteria()}
-                        className="px-3 py-1.5 border rounded text-gray-700 hover:bg-gray-50"
-                        type="button"
-                      >
-                        Reset defaults
-                      </button>
-                      <button
-                        onClick={() =>
-                          recomputeWithCriteria(
-                            originalResults.length ? originalResults : results
-                          )
-                        }
-                        className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
-                        type="button"
-                      >
-                        Apply criteria
-                      </button>
+                    ))}
+                    <div className="text-xs text-red-500 text-right font-medium mt-2">
+                      * ค่าที่เกินกว่า Unsatisfactory จะถือเป็น Serious
+                      (ร้ายแรง)
                     </div>
                   </div>
                 </div>
               </div>
-            )}
-            <div className="mt-4 flex justify-between">
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() =>
+                    recomputeWithCriteria(
+                      originalResults.length ? originalResults : results
+                    )
+                  }
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm shadow-sm transition-colors flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" /> คำนวณผลใหม่ (Re-calculate)
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-between">
               <button
                 onClick={goBack}
-                className="px-4 py-2 bg-gray-100 rounded-md"
+                className="px-6 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 font-medium transition-colors"
               >
-                Back
+                ย้อนกลับ
               </button>
               <button
                 onClick={goNext}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md flex items-center"
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center font-medium shadow-sm transition-colors"
               >
-                Continue <ArrowRight className="h-4 w-4 ml-2" />
+                ยืนยันและดำเนินการต่อ <ArrowRight className="h-4 w-4 ml-2" />
               </button>
             </div>
           </section>
         )}
 
+        {/* Step 3: Evaluate */}
         {step === 3 && (
-          <section className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Step 3 — Calculate Z-scores and assign grades
-            </h2>
-            {summary ? (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="p-4 bg-green-50 border rounded">
-                  <div className="text-2xl font-bold text-green-700">
-                    {summary.passRate}%
-                  </div>
-                  <div className="text-sm text-green-700">Pass Rate</div>
-                </div>
-                <div className="p-4 bg-blue-50 border rounded">
-                  <div className="text-2xl font-bold text-blue-700">
-                    {summary.averageZScore}
-                  </div>
-                  <div className="text-sm text-blue-700">Avg |Z-score|</div>
-                </div>
-                <div className="p-4 bg-yellow-50 border rounded">
-                  <div className="text-2xl font-bold text-yellow-700">
-                    {summary.totalEvaluations}
-                  </div>
-                  <div className="text-sm text-yellow-700">Evaluations</div>
-                </div>
-                <div className="p-4 bg-purple-50 border rounded">
-                  <div className="text-sm text-purple-700">Grades</div>
-                  <div className="text-xs text-purple-700">
-                    E:{summary.gradeDistribution.Excellent} G:
-                    {summary.gradeDistribution.Good} S:
-                    {summary.gradeDistribution.Satisfactory} U:
-                    {summary.gradeDistribution.Unsatisfactory} Sr:
-                    {summary.gradeDistribution.Serious}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-600">No summary available.</p>
-            )}
+          <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                  3
+                </span>
+                ประเมินผล (Evaluate)
+              </h2>
+              <p className="text-slate-500 mt-1 ml-10 text-sm">
+                วิเคราะห์ผลการทดสอบ Z-Score และการกระจายตัวของเกรด
+              </p>
+            </div>
 
-            {/* Charts */}
-            {summary && results.length > 0 && (
-              <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {/* Grade distribution */}
-                <div className="p-4 border rounded bg-white">
-                  <div className="text-sm font-medium text-gray-800 mb-2">
-                    Grade distribution
+            <div className="p-6">
+              {/* Summary Cards */}
+              {summary && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                  <div className="p-5 bg-green-50 border border-green-100 rounded-xl shadow-sm">
+                    <div className="text-xs text-green-600 font-bold uppercase tracking-wider">
+                      อัตราการผ่าน (Pass Rate)
+                    </div>
+                    <div className="text-3xl font-bold text-green-700 mt-2">
+                      {summary.passRate}%
+                    </div>
                   </div>
-                  <div style={{ width: "100%", height: 240 }}>
-                    <ResponsiveContainer>
+                  <div className="p-5 bg-blue-50 border border-blue-100 rounded-xl shadow-sm">
+                    <div className="text-xs text-blue-600 font-bold uppercase tracking-wider">
+                      ค่าเฉลี่ย |Z-Score|
+                    </div>
+                    <div className="text-3xl font-bold text-blue-700 mt-2">
+                      {summary.averageZScore}
+                    </div>
+                  </div>
+                  <div className="p-5 bg-purple-50 border border-purple-100 rounded-xl shadow-sm">
+                    <div className="text-xs text-purple-600 font-bold uppercase tracking-wider">
+                      จำนวนรายการ
+                    </div>
+                    <div className="text-3xl font-bold text-purple-700 mt-2">
+                      {summary.totalEvaluations}
+                    </div>
+                  </div>
+                  <div className="p-5 bg-orange-50 border border-orange-100 rounded-xl shadow-sm">
+                    <div className="text-xs text-orange-600 font-bold uppercase tracking-wider">
+                      ต้องแก้ไข (Fail)
+                    </div>
+                    <div className="text-3xl font-bold text-orange-700 mt-2">
+                      {summary.gradeDistribution.Unsatisfactory +
+                        summary.gradeDistribution.Serious}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="border border-slate-200 rounded-xl p-5 shadow-sm">
+                  <h3 className="font-bold text-slate-700 mb-4">
+                    การกระจายตัวของเกรด (Grade Distribution)
+                  </h3>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
                       <BarChart
-                        data={[
-                          {
-                            grade: "Excellent",
-                            count: summary.gradeDistribution.Excellent,
-                          },
-                          {
-                            grade: "Good",
-                            count: summary.gradeDistribution.Good,
-                          },
-                          {
-                            grade: "Satisfactory",
-                            count: summary.gradeDistribution.Satisfactory,
-                          },
-                          {
-                            grade: "Unsatisfactory",
-                            count: summary.gradeDistribution.Unsatisfactory,
-                          },
-                          {
-                            grade: "Serious",
-                            count: summary.gradeDistribution.Serious,
-                          },
-                        ]}
-                        margin={{ top: 10, right: 10, bottom: 10, left: 0 }}
+                        data={Object.entries(
+                          summary?.gradeDistribution || {}
+                        ).map(([k, v]) => ({ name: k, value: v }))}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="grade" tick={{ fontSize: 12 }} />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                        <Tooltip />
-                        <Bar
-                          dataKey="count"
-                          fill="#6366f1"
-                          radius={[4, 4, 0, 0]}
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                        <YAxis />
+                        <Tooltip
+                          contentStyle={{
+                            borderRadius: "8px",
+                            border: "none",
+                            boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                          }}
                         />
+                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                          {Object.entries(summary?.gradeDistribution || {}).map(
+                            ([k], index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={
+                                  COLORS[k as keyof typeof COLORS] || "#8884d8"
+                                }
+                              />
+                            )
+                          )}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
 
-                {/* Avg |Z| by model */}
-                <div className="p-4 border rounded bg-white">
-                  <div className="text-sm font-medium text-gray-800 mb-2">
-                    Average |Z| by model
-                  </div>
-                  <div style={{ width: "100%", height: 240 }}>
-                    <ResponsiveContainer>
+                <div className="border border-slate-200 rounded-xl p-5 shadow-sm">
+                  <h3 className="font-bold text-slate-700 mb-4">
+                    ค่าเฉลี่ย |Z| แยกตามรุ่น (Avg |Z| by Model)
+                  </h3>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={Array.from(
                           results.reduce((map, r) => {
@@ -681,263 +709,445 @@ export default function PTEQAWizardPage() {
                             map.set(key, cur);
                             return map;
                           }, new Map<string, { model: string; sum: number; n: number }>())
-                        )
-                          .map(([, v]) => ({
-                            model: v.model,
-                            avg: Number((v.sum / v.n).toFixed(2)),
-                          }))
-                          .sort((a, b) => a.model.localeCompare(b.model))}
-                        margin={{ top: 10, right: 10, bottom: 10, left: 0 }}
+                        ).map(([, v]) => ({
+                          model: v.model,
+                          avg: Number((v.sum / v.n).toFixed(2)),
+                        }))}
+                        layout="vertical"
+                        margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="model"
-                          tick={{ fontSize: 11 }}
-                          interval={0}
-                          angle={-20}
-                          height={50}
-                          tickMargin={8}
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          horizontal={false}
                         />
-                        <YAxis tick={{ fontSize: 12 }} />
+                        <XAxis type="number" />
+                        <YAxis
+                          dataKey="model"
+                          type="category"
+                          width={80}
+                          tick={{ fontSize: 11 }}
+                        />
                         <Tooltip />
                         <Bar
                           dataKey="avg"
-                          fill="#10b981"
-                          radius={[4, 4, 0, 0]}
+                          fill="#3b82f6"
+                          radius={[0, 4, 4, 0]}
+                          barSize={20}
                         />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* Filters */}
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">
-                  Filter by model
-                </label>
-                <select
-                  className="w-full border rounded-md px-2 py-2 text-sm"
-                  value={modelFilter}
-                  onChange={(e) => setModelFilter(e.target.value)}
-                >
-                  <option value="All">All models</option>
-                  {uniqueModels.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">
-                  Filter by grade
-                </label>
-                <select
-                  className="w-full border rounded-md px-2 py-2 text-sm"
-                  value={gradeFilter}
-                  onChange={(e) => setGradeFilter(e.target.value)}
-                >
-                  <option value="All">All grades</option>
-                  {grades.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs text-gray-600 mb-1">
-                  Search (Lab Code / Parameter)
-                </label>
-                <input
-                  className="w-full border rounded-md px-3 py-2 text-sm"
-                  placeholder="e.g., 00012 or RBC"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </div>
-            </div>
+              {/* Data Table with Filters */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-slate-50 p-4 border-b border-slate-200 flex flex-wrap gap-4 items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-slate-500" />
+                    <span className="text-sm font-bold text-slate-700">
+                      ตัวกรองข้อมูล
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <select
+                      className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={modelFilter}
+                      onChange={(e) => setModelFilter(e.target.value)}
+                    >
+                      <option value="All">ทุกรุ่น (All Models)</option>
+                      {uniqueModels.map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="text-sm border border-slate-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={gradeFilter}
+                      onChange={(e) => setGradeFilter(e.target.value)}
+                    >
+                      <option value="All">ทุกเกรด (All Grades)</option>
+                      {grades.map((g) => (
+                        <option key={g} value={g}>
+                          {g}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="relative">
+                      <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="ค้นหา Lab Code..."
+                        className="text-sm border border-slate-300 rounded-lg pl-9 pr-3 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none w-48"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-            {/* Results table */}
-            <div className="mt-4 border rounded-md overflow-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-gray-50 text-gray-600">
-                  <tr>
-                    <th className="text-left px-3 py-2">Lab Code</th>
-                    <th className="text-left px-3 py-2">Model</th>
-                    <th className="text-left px-3 py-2">Parameter</th>
-                    <th className="text-right px-3 py-2">Measured</th>
-                    <th className="text-right px-3 py-2">Reference</th>
-                    <th className="text-right px-3 py-2">Z-score</th>
-                    <th className="text-left px-3 py-2">Grade</th>
-                    <th className="text-left px-3 py-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredResults.length === 0 ? (
-                    <tr>
-                      <td
-                        className="px-3 py-3 text-center text-gray-500"
-                        colSpan={8}
-                      >
-                        No records match the filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredResults.slice(0, 500).map((r, idx) => (
-                      <tr
-                        key={`${r.labCode}-${r.modelCode}-${r.parameter}-${idx}`}
-                        className="border-t"
-                      >
-                        <td className="px-3 py-2">{r.labCode}</td>
-                        <td className="px-3 py-2">{r.modelCode}</td>
-                        <td className="px-3 py-2">{r.parameter}</td>
-                        <td className="px-3 py-2 text-right">
-                          {r.measuredValue.toFixed(2)}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {r.referenceValue.toFixed(2)}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          {r.zScore.toFixed(2)}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={
-                              r.grade === "Excellent"
-                                ? "text-green-700"
-                                : r.grade === "Good"
-                                ? "text-emerald-700"
-                                : r.grade === "Satisfactory"
-                                ? "text-yellow-700"
-                                : r.grade === "Unsatisfactory"
-                                ? "text-orange-700"
-                                : "text-red-700"
-                            }
-                          >
-                            {r.grade}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={
-                              r.status === "Pass"
-                                ? "text-green-700"
-                                : "text-red-700"
-                            }
-                          >
-                            {r.status}
-                          </span>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          Lab Code
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          Model
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          Param
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          Measured
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          Ref
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          Z-Score
+                        </th>
+                        <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+                          Grade
+                        </th>
                       </tr>
-                    ))
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                      {filteredResults.slice(0, 100).map((r, i) => (
+                        <tr
+                          key={i}
+                          className="hover:bg-slate-50 transition-colors"
+                        >
+                          <td className="px-6 py-3 text-sm font-medium text-slate-900">
+                            {r.labCode}
+                          </td>
+                          <td className="px-6 py-3 text-sm text-slate-500">
+                            {r.modelCode}
+                          </td>
+                          <td className="px-6 py-3 text-sm text-slate-900">
+                            {r.parameter}
+                          </td>
+                          <td className="px-6 py-3 text-sm text-right text-slate-600">
+                            {r.measuredValue.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-3 text-sm text-right text-slate-600">
+                            {r.referenceValue.toFixed(2)}
+                          </td>
+                          <td
+                            className={`px-6 py-3 text-sm text-right font-mono font-bold ${
+                              Math.abs(r.zScore) > 2
+                                ? "text-red-600"
+                                : "text-slate-700"
+                            }`}
+                          >
+                            {r.zScore.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-3 text-center">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                              ${
+                                r.grade === "Excellent"
+                                  ? "bg-green-100 text-green-800"
+                                  : r.grade === "Good"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : r.grade === "Satisfactory"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {r.grade}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredResults.length > 100 && (
+                    <div className="px-6 py-3 bg-slate-50 text-center text-xs text-slate-500 border-t border-slate-200">
+                      แสดง 100 รายการแรกจากทั้งหมด {filteredResults.length}{" "}
+                      รายการ
+                    </div>
                   )}
-                </tbody>
-              </table>
-              {filteredResults.length > 500 && (
-                <div className="px-3 py-2 text-xs text-gray-500">
-                  Showing first 500 rows. Refine filters to see more.
                 </div>
-              )}
+              </div>
             </div>
-            <div className="mt-4 flex justify-between">
+
+            <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-between">
               <button
                 onClick={goBack}
-                className="px-4 py-2 bg-gray-100 rounded-md"
+                className="px-6 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 font-medium transition-colors"
               >
-                Back
+                ย้อนกลับ
               </button>
               <button
                 onClick={goNext}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md"
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center font-medium shadow-sm transition-colors"
               >
-                Continue
+                ดำเนินการต่อ <ArrowRight className="h-4 w-4 ml-2" />
               </button>
             </div>
           </section>
         )}
 
+        {/* Step 4: Review & CAPA */}
         {step === 4 && (
-          <section className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Step 4 — Review nonconformities & CAPA
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 border rounded">
-                <BarChart3 className="h-5 w-5 text-gray-500 mb-2" />
-                <div className="text-sm text-gray-700">
-                  Inspect metrics and grade distribution. Confirm trends are
-                  within acceptable limits.
+          <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                  4
+                </span>
+                ทบทวนและแก้ไข (Review & CAPA)
+              </h2>
+              <p className="text-slate-500 mt-1 ml-10 text-sm">
+                จัดการข้อบกพร่อง (Non-conformities) และบันทึกการแก้ไข
+                (Corrective Actions)
+              </p>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-6 bg-orange-50 border border-orange-100 rounded-xl p-5">
+                <h3 className="font-bold text-orange-800 mb-2 flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  รายการที่ต้องดำเนินการแก้ไข (Action Required)
+                </h3>
+                <p className="text-sm text-orange-700 mb-4">
+                  พบผลการประเมินที่ไม่ผ่านเกณฑ์ (Unsatisfactory/Serious) จำนวน{" "}
+                  {results.filter((r) => r.status === "Fail").length} รายการ
+                </p>
+
+                <div className="bg-white rounded-lg border border-orange-200 overflow-hidden">
+                  <table className="min-w-full divide-y divide-orange-100">
+                    <thead className="bg-orange-50/50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-orange-800">
+                          Lab Code
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-orange-800">
+                          Parameter
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-bold text-orange-800">
+                          Z-Score
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-orange-800">
+                          Grade
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-orange-800">
+                          CAPA Note
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-orange-100">
+                      {results
+                        .filter((r) => r.status === "Fail")
+                        .map((r, i) => (
+                          <tr key={i}>
+                            <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                              {r.labCode}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-600">
+                              {r.parameter}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-right font-bold text-red-600">
+                              {r.zScore.toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded text-xs font-medium">
+                                {r.grade}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2">
+                              <input
+                                type="text"
+                                placeholder="ระบุสาเหตุ/การแก้ไข..."
+                                className="w-full text-sm border border-slate-300 rounded px-2 py-1 focus:ring-2 focus:ring-orange-500 outline-none"
+                                value={
+                                  capaRecords[`${r.labCode}-${r.parameter}`] ||
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  setCapaRecords((prev) => ({
+                                    ...prev,
+                                    [`${r.labCode}-${r.parameter}`]:
+                                      e.target.value,
+                                  }))
+                                }
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      {results.filter((r) => r.status === "Fail").length ===
+                        0 && (
+                        <tr>
+                          <td
+                            colSpan={5}
+                            className="px-4 py-8 text-center text-green-600 font-medium"
+                          >
+                            <CheckCircle2 className="h-8 w-8 mx-auto mb-2" />
+                            ไม่พบรายการที่ต้องแก้ไข (All Passed)
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-              <div className="p-4 border rounded">
-                <Shield className="h-5 w-5 text-gray-500 mb-2" />
-                <div className="text-sm text-gray-700">
-                  Identify Serious or repeated Unsatisfactory results. Document
-                  root cause and corrective actions.
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="border border-slate-200 rounded-xl p-5">
+                  <h3 className="font-bold text-slate-800 mb-3">
+                    บันทึกข้อเสนอแนะ (Comments)
+                  </h3>
+                  <textarea
+                    className="w-full h-32 border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                    placeholder="ระบุข้อคิดเห็นเพิ่มเติมสำหรับการประเมินรอบนี้..."
+                  ></textarea>
                 </div>
-              </div>
-              <div className="p-4 border rounded">
-                <CheckCircle2 className="h-5 w-5 text-gray-500 mb-2" />
-                <div className="text-sm text-gray-700">
-                  Sign-off the evaluation (authorized reviewer) and proceed to
-                  official report generation.
+                <div className="border border-slate-200 rounded-xl p-5 bg-slate-50">
+                  <h3 className="font-bold text-slate-800 mb-3">
+                    การรับรองผล (Approval)
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id="approve1"
+                        className="h-4 w-4 text-blue-600 rounded border-slate-300"
+                      />
+                      <label
+                        htmlFor="approve1"
+                        className="text-sm text-slate-700"
+                      >
+                        ยืนยันความถูกต้องของข้อมูลดิบ
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id="approve2"
+                        className="h-4 w-4 text-blue-600 rounded border-slate-300"
+                      />
+                      <label
+                        htmlFor="approve2"
+                        className="text-sm text-slate-700"
+                      >
+                        ยืนยันเกณฑ์การประเมิน (Criteria)
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id="approve3"
+                        className="h-4 w-4 text-blue-600 rounded border-slate-300"
+                      />
+                      <label
+                        htmlFor="approve3"
+                        className="text-sm text-slate-700"
+                      >
+                        อนุมัติผลการประเมินอย่างเป็นทางการ
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="mt-4 flex justify-between">
+
+            <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-between">
               <button
                 onClick={goBack}
-                className="px-4 py-2 bg-gray-100 rounded-md"
+                className="px-6 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 font-medium transition-colors"
               >
-                Back
+                ย้อนกลับ
               </button>
               <button
                 onClick={goNext}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md"
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center font-medium shadow-sm transition-colors"
               >
-                Continue
+                บันทึกและไปหน้าส่งออก <ArrowRight className="h-4 w-4 ml-2" />
               </button>
             </div>
           </section>
         )}
 
+        {/* Step 5: Export */}
         {step === 5 && (
-          <section className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Step 5 — Approve & Export
-            </h2>
-            <p className="text-sm text-gray-600 mb-3">
-              Download PT:EQA evaluation results as CSV for record keeping and
-              submission.
-            </p>
-            <button
-              onClick={() =>
-                exportToCSV(
-                  results,
-                  `PT_EQA_Results_${new Date().toISOString().slice(0, 10)}.csv`
-                )
-              }
-              className="px-4 py-2 bg-green-600 text-white rounded-md flex items-center hover:bg-green-700"
-            >
-              <Download className="h-4 w-4 mr-2" /> Export CSV
-            </button>
-            <div className="mt-4 flex justify-between">
-              <button
-                onClick={goBack}
-                className="px-4 py-2 bg-gray-100 rounded-md"
-              >
-                Back
-              </button>
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md"
-              >
-                Finish
-              </button>
+          <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span className="bg-blue-100 text-blue-700 w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                  5
+                </span>
+                อนุมัติและส่งออก (Approve & Export)
+              </h2>
+              <p className="text-slate-500 mt-1 ml-10 text-sm">
+                เสร็จสิ้นกระบวนการประเมิน ดาวน์โหลดรายงานผล
+              </p>
+            </div>
+
+            <div className="p-12 text-center">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle2 className="h-10 w-10 text-green-600" />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-800 mb-2">
+                การประเมินเสร็จสมบูรณ์
+              </h3>
+              <p className="text-slate-500 mb-8 max-w-md mx-auto">
+                ระบบได้ทำการประมวลผลและบันทึกข้อมูลเรียบร้อยแล้ว
+                ท่านสามารถดาวน์โหลดไฟล์รายงานผลการประเมินได้ด้านล่าง
+              </p>
+
+              <div className="flex flex-col sm:flex-row justify-center gap-4">
+                <button
+                  onClick={() =>
+                    exportToCSV(
+                      results,
+                      `PT_EQA_Results_${new Date()
+                        .toISOString()
+                        .slice(0, 10)}.csv`
+                    )
+                  }
+                  className="px-8 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 font-bold text-lg"
+                >
+                  <Download className="h-6 w-6" /> ดาวน์โหลดไฟล์ CSV
+                </button>
+
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="px-8 py-4 bg-white border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-3 font-bold text-lg"
+                >
+                  กลับสู่หน้าหลัก
+                </button>
+              </div>
+
+              <div className="mt-12 pt-8 border-t border-slate-100 max-w-2xl mx-auto">
+                <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
+                  สรุปผลการดำเนินการ
+                </h4>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-slate-800">
+                      {results.length}
+                    </div>
+                    <div className="text-xs text-slate-500">รายการทั้งหมด</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {summary?.passRate}%
+                    </div>
+                    <div className="text-xs text-slate-500">อัตราการผ่าน</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {Object.keys(capaRecords).length}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      รายการแก้ไข (CAPA)
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
         )}

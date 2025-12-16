@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Lock, Mail, ArrowRight, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,128 +43,170 @@ export default function LoginPage() {
       );
 
       if (!match) {
-        setError("Invalid credentials. Try the demo accounts below.");
+        setError("อีเมลหรือรหัสผ่านไม่ถูกต้อง (Invalid credentials)");
+        setLoading(false);
         return;
       }
 
       // Store session in localStorage (demo only)
-      const session = {
-        token: "demo-token",
-        user: { email, role: match.role, name: match.role },
-        signedInAt: Date.now(),
-      };
-      if (typeof window !== "undefined") {
-        localStorage.setItem("smartlab_auth", JSON.stringify(session));
-      }
+      localStorage.setItem("user_session", JSON.stringify(match));
+
+      // Simulate network delay
+      await new Promise((resolve) => setTimeout(resolve, 800));
 
       router.push("/dashboard");
-    } finally {
+    } catch (err) {
+      setError("เกิดข้อผิดพลาดในการเข้าสู่ระบบ");
       setLoading(false);
     }
   };
 
-  const handleGuest = () => {
-    if (typeof window !== "undefined") {
-      const session = {
-        token: "guest-token",
-        user: { email: "guest@smartlab.local", role: "Guest", name: "Guest" },
-        signedInAt: Date.now(),
-      };
-      localStorage.setItem("smartlab_auth", JSON.stringify(session));
-    }
-    router.push("/dashboard");
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-gray-900 font-semibold">
-            <ShieldCheck className="h-5 w-5 text-blue-600" /> SmartLab Access
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="flex justify-center">
+          <div className="bg-blue-600 p-3 rounded-xl shadow-lg">
+            <ShieldCheck className="h-10 w-10 text-white" />
           </div>
-          <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">
-            Back to Home
-          </Link>
         </div>
-      </header>
+        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-slate-900">
+          เข้าสู่ระบบ SmartLab
+        </h2>
+        <p className="mt-2 text-center text-sm text-slate-600">
+          ระบบบริหารคุณภาพห้องปฏิบัติการ (Quality Management System)
+        </p>
+      </div>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 grid grid-cols-1 md:grid-cols-2 gap-8">
-        <section className="bg-white rounded-lg border p-6 shadow-sm">
-          <h1 className="text-xl font-semibold text-gray-900">Sign in</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Use a demo account or continue as guest.
-          </p>
-
-          {error && (
-            <div className="mt-3 p-3 rounded-md bg-red-50 text-red-700 border border-red-200 text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="mt-4 space-y-3">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-slate-200">
+          <form className="space-y-6" onSubmit={handleLogin}>
             <div>
-              <label className="block text-sm text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                className="w-full border rounded-md px-3 py-2 text-sm"
-                placeholder="e.g. admin@smartlab.local"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-700 mb-1">
-                Password
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-slate-700"
+              >
+                อีเมล (Email address)
               </label>
-              <input
-                type="password"
-                className="w-full border rounded-md px-3 py-2 text-sm"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-slate-400" />
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="block w-full pl-10 appearance-none rounded-md border border-slate-300 px-3 py-2 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                  placeholder="name@hospital.com"
+                />
+              </div>
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300"
-            >
-              {loading ? "Signing in…" : "Sign in"}
-            </button>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-slate-700"
+              >
+                รหัสผ่าน (Password)
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-slate-400" />
+                </div>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="block w-full pl-10 appearance-none rounded-md border border-slate-300 px-3 py-2 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="rounded-md bg-red-50 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <AlertCircle
+                      className="h-5 w-5 text-red-400"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">
+                      เข้าสู่ระบบไม่สำเร็จ
+                    </h3>
+                    <div className="mt-2 text-sm text-red-700">
+                      <p>{error}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex w-full justify-center rounded-md border border-transparent bg-blue-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ (Sign in)"}
+              </button>
+            </div>
           </form>
 
-          <button
-            onClick={handleGuest}
-            className="w-full mt-3 px-4 py-2 bg-white text-gray-700 border rounded-md hover:bg-gray-50"
-          >
-            Continue as Guest
-          </button>
-        </section>
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-white px-2 text-slate-500">
+                  บัญชีทดสอบ (Demo Accounts)
+                </span>
+              </div>
+            </div>
 
-        <aside className="bg-white rounded-lg border p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-900">Demo accounts</h2>
-          <ul className="mt-2 text-sm text-gray-700 space-y-1">
-            <li>
-              <span className="font-medium">Administrator:</span>{" "}
-              admin@smartlab.local / admin123
-            </li>
-            <li>
-              <span className="font-medium">Supervisor:</span>{" "}
-              supervisor@smartlab.local / super123
-            </li>
-            <li>
-              <span className="font-medium">Analyst:</span>{" "}
-              analyst@smartlab.local / analyst123
-            </li>
-          </ul>
-          <div className="mt-4 text-xs text-gray-500">
-            This is a client-side demo login (no backend). Replace with your
-            identity provider or API when ready.
+            <div className="mt-6 grid grid-cols-1 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail("admin@smartlab.local");
+                  setPassword("admin123");
+                }}
+                className="inline-flex w-full justify-between items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-500 shadow-sm hover:bg-slate-50"
+              >
+                <span className="flex items-center">
+                  <span className="h-2 w-2 rounded-full bg-purple-500 mr-2"></span>
+                  Admin
+                </span>
+                <span className="text-xs text-slate-400">admin123</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail("analyst@smartlab.local");
+                  setPassword("analyst123");
+                }}
+                className="inline-flex w-full justify-between items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-500 shadow-sm hover:bg-slate-50"
+              >
+                <span className="flex items-center">
+                  <span className="h-2 w-2 rounded-full bg-blue-500 mr-2"></span>
+                  Analyst
+                </span>
+                <span className="text-xs text-slate-400">analyst123</span>
+              </button>
+            </div>
           </div>
-        </aside>
-      </main>
+        </div>
+      </div>
     </div>
   );
 }
