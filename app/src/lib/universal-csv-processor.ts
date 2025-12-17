@@ -356,9 +356,9 @@ function parseMockupAV(lines: string[][]): StandardBloodTestRecord[] {
         referenceMCH: safeParseFloat(row[19]),
         referenceMCHC: safeParseFloat(row[20]),
 
-        // Equipment info
-        brandCode: normalizeCode(row[21]) || "600",
-        modelCode: normalizeCode(row[23]) || "600",
+        // Equipment info (0-indexed: Brand_Code=22, Model_Code=24, Model_Name=27)
+        brandCode: normalizeCode(row[22]) || "600",
+        modelCode: normalizeCode(row[24]) || "600",
         modelName: row[27],
         type: row[35],
 
