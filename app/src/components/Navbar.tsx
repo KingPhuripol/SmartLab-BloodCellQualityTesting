@@ -54,7 +54,7 @@ export default function Navbar() {
                 <span className="font-bold text-slate-900 text-xl leading-none tracking-tight">
                   SmartLab{" "}
                   <span className="text-[10px] text-slate-400 font-normal">
-                    v0.1.2
+                    v0.1.3
                   </span>
                 </span>
                 <span className="text-[10px] text-blue-600 font-bold tracking-widest uppercase mt-1">
