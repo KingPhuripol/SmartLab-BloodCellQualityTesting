@@ -25,11 +25,11 @@ export async function GET() {
       "/Users/king_phuripol/Work/SmartLab/BloodCellQualityTesting",
     ];
 
+    // Return empty state if no data files exist (user needs to upload)
     let dataRoot: string | null = null;
     for (const d of candidateDirs) {
       try {
-        const testFile = path.join(d, "BloodData - Test01.csv");
-        await fs.access(testFile);
+        await fs.access(d);
         dataRoot = d;
         break;
       } catch {
@@ -38,14 +38,23 @@ export async function GET() {
     }
 
     if (!dataRoot) {
-      return NextResponse.json(
-        {
-          error: "Data files not found",
-          message: "Could not locate BloodData - Test01.csv",
-          searchedPaths: candidateDirs,
+      // No data directory found - return empty state instead of error
+      return NextResponse.json({
+        files: [],
+        results: [],
+        summary: {
+          totalLabs: 0,
+          totalParams: 0,
+          passRate: 0,
+          gradeDistribution: { Excellent: 0, Good: 0, Satisfactory: 0, Unsatisfactory: 0 },
+          modelPerformance: [],
         },
-        { status: 404 }
-      );
+        metadata: {
+          loadedFiles: [],
+          totalRecords: 0,
+          formats: [],
+        },
+      });
     }
 
     // Define all data file locations
@@ -108,14 +117,23 @@ export async function GET() {
     }
 
     if (processed.length === 0) {
-      return NextResponse.json(
-        {
-          error: "No valid data files found",
-          message: "Could not process any CSV files",
-          attemptedFiles: dataFiles.map((f) => path.basename(f.path)),
+      // No data files to load - return empty state for user to upload
+      return NextResponse.json({
+        files: [],
+        results: [],
+        summary: {
+          totalLabs: 0,
+          totalParams: 0,
+          passRate: 0,
+          gradeDistribution: { Excellent: 0, Good: 0, Satisfactory: 0, Unsatisfactory: 0 },
+          modelPerformance: [],
         },
-        { status: 404 }
-      );
+        metadata: {
+          loadedFiles: [],
+          totalRecords: 0,
+          formats: [],
+        },
+      });
     }
 
     // Merge all processed data
