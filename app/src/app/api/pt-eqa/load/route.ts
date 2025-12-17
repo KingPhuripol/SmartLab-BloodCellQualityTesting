@@ -61,10 +61,11 @@ export async function GET() {
       } catch {}
     }
 
-    // 2. Add files from "Blood Test Mockup CSVs Sept 28 2025" or "mockups"
+    // 2. Add files from "Blood Test Mockup CSVs Sept 28 2025", "mockups", or "uploads"
     const mockupDirs = [
       path.join(dataRoot, "Blood Test Mockup CSVs Sept 28 2025"),
       path.join(dataRoot, "mockups"),
+      path.join(dataRoot, "uploads"),
     ];
 
     for (const mockupDir of mockupDirs) {

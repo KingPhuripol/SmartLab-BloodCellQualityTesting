@@ -10,6 +10,7 @@ import {
   LogIn,
   Menu,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -30,6 +31,12 @@ export default function Navbar() {
       label: "ประเมินผล",
       sub: "PT:EQA",
       icon: FileSpreadsheet,
+    },
+    {
+      path: "/pt-eqa/convert",
+      label: "แปลงไฟล์",
+      sub: "Converter",
+      icon: RefreshCw,
     },
   ];
 

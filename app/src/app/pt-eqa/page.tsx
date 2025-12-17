@@ -21,8 +21,11 @@ import {
   Save,
   FileText,
 } from "lucide-react";
-import type { PTEQAResult } from "@/lib/csv";
-import { generateSummary, type PTEQASummary } from "@/lib/pt-eqa-analysis";
+import {
+  generateSummary,
+  type PTEQASummary,
+  type PTEQAResult,
+} from "@/lib/pt-eqa-analysis";
 import { exportToCSV } from "@/lib/csv";
 import Collapsible from "@/components/Collapsible";
 import {
@@ -524,40 +527,46 @@ export default function PTEQAWizardPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 bg-white">
-                        {summary.assignedValues.map((stat, i) => (
-                          <tr
-                            key={i}
-                            className="hover:bg-slate-50 transition-colors"
-                          >
-                            <td className="px-4 py-2 font-medium text-slate-900">
-                              {stat.modelCode}
-                            </td>
-                            <td className="px-4 py-2 text-slate-600">
-                              {stat.parameter}
-                            </td>
-                            <td className="px-4 py-2 text-right font-mono">
-                              {formatValue(stat.parameter, stat.mean)}
-                            </td>
-                            <td className="px-4 py-2 text-right font-mono">
-                              {formatValue(stat.parameter, stat.sd)}
-                            </td>
-                            <td className="px-4 py-2 text-right font-mono">
-                              {stat.cvPercent.toFixed(2)}%
-                            </td>
-                            <td className="px-4 py-2 text-right text-slate-500">
-                              {stat.nTotal}
-                            </td>
-                            <td className="px-4 py-2 text-right font-medium text-green-600">
-                              {stat.nUsed}
-                            </td>
-                            <td className="px-4 py-2 text-right text-red-600 font-medium">
-                              {stat.nBlunder}
-                            </td>
-                            <td className="px-4 py-2 text-right text-orange-600 font-medium">
-                              {stat.nOutlier}
-                            </td>
-                          </tr>
-                        ))}
+                        {summary.assignedValues
+                          .filter(
+                            (stat) =>
+                              modelFilter === "All" ||
+                              stat.modelCode === modelFilter
+                          )
+                          .map((stat, i) => (
+                            <tr
+                              key={i}
+                              className="hover:bg-slate-50 transition-colors"
+                            >
+                              <td className="px-4 py-2 font-medium text-slate-900">
+                                {stat.modelCode}
+                              </td>
+                              <td className="px-4 py-2 text-slate-600">
+                                {stat.parameter}
+                              </td>
+                              <td className="px-4 py-2 text-right font-mono">
+                                {formatValue(stat.parameter, stat.mean)}
+                              </td>
+                              <td className="px-4 py-2 text-right font-mono">
+                                {formatValue(stat.parameter, stat.sd)}
+                              </td>
+                              <td className="px-4 py-2 text-right font-mono">
+                                {stat.cvPercent.toFixed(2)}%
+                              </td>
+                              <td className="px-4 py-2 text-right text-slate-500">
+                                {stat.nTotal}
+                              </td>
+                              <td className="px-4 py-2 text-right font-medium text-green-600">
+                                {stat.nUsed}
+                              </td>
+                              <td className="px-4 py-2 text-right text-red-600 font-medium">
+                                {stat.nBlunder}
+                              </td>
+                              <td className="px-4 py-2 text-right text-orange-600 font-medium">
+                                {stat.nOutlier}
+                              </td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
@@ -809,34 +818,40 @@ export default function PTEQAWizardPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 bg-white">
-                        {summary.assignedValues.map((stat, i) => (
-                          <tr
-                            key={i}
-                            className="hover:bg-slate-50 transition-colors"
-                          >
-                            <td className="px-4 py-2 font-medium text-slate-900">
-                              {stat.modelCode}
-                            </td>
-                            <td className="px-4 py-2 text-slate-600">
-                              {stat.parameter}
-                            </td>
-                            <td className="px-4 py-2 text-right font-mono">
-                              {formatValue(stat.parameter, stat.mean)}
-                            </td>
-                            <td className="px-4 py-2 text-right font-mono">
-                              {formatValue(stat.parameter, stat.sd)}
-                            </td>
-                            <td className="px-4 py-2 text-right font-mono">
-                              {stat.cvPercent.toFixed(2)}%
-                            </td>
-                            <td className="px-4 py-2 text-right text-slate-500">
-                              {stat.nTotal}
-                            </td>
-                            <td className="px-4 py-2 text-right font-medium text-green-600">
-                              {stat.nUsed}
-                            </td>
-                          </tr>
-                        ))}
+                        {summary.assignedValues
+                          .filter(
+                            (stat) =>
+                              modelFilter === "All" ||
+                              stat.modelCode === modelFilter
+                          )
+                          .map((stat, i) => (
+                            <tr
+                              key={i}
+                              className="hover:bg-slate-50 transition-colors"
+                            >
+                              <td className="px-4 py-2 font-medium text-slate-900">
+                                {stat.modelCode}
+                              </td>
+                              <td className="px-4 py-2 text-slate-600">
+                                {stat.parameter}
+                              </td>
+                              <td className="px-4 py-2 text-right font-mono">
+                                {formatValue(stat.parameter, stat.mean)}
+                              </td>
+                              <td className="px-4 py-2 text-right font-mono">
+                                {formatValue(stat.parameter, stat.sd)}
+                              </td>
+                              <td className="px-4 py-2 text-right font-mono">
+                                {stat.cvPercent.toFixed(2)}%
+                              </td>
+                              <td className="px-4 py-2 text-right text-slate-500">
+                                {stat.nTotal}
+                              </td>
+                              <td className="px-4 py-2 text-right font-medium text-green-600">
+                                {stat.nUsed}
+                              </td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
@@ -853,7 +868,19 @@ export default function PTEQAWizardPage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={Object.entries(
-                          summary?.gradeDistribution || {}
+                          filteredResults.reduce(
+                            (acc, r) => {
+                              acc[r.grade] = (acc[r.grade] || 0) + 1;
+                              return acc;
+                            },
+                            {
+                              Excellent: 0,
+                              Good: 0,
+                              Satisfactory: 0,
+                              Unsatisfactory: 0,
+                              Serious: 0,
+                            } as Record<string, number>
+                          )
                         ).map(([k, v]) => ({ name: k, value: v }))}
                         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                       >
@@ -868,16 +895,14 @@ export default function PTEQAWizardPage() {
                           }}
                         />
                         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                          {Object.entries(summary?.gradeDistribution || {}).map(
-                            ([k], index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={
-                                  COLORS[k as keyof typeof COLORS] || "#8884d8"
-                                }
-                              />
-                            )
-                          )}
+                          {Object.keys(COLORS).map((k, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={
+                                COLORS[k as keyof typeof COLORS] || "#8884d8"
+                              }
+                            />
+                          ))}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>

@@ -4,6 +4,9 @@ import {
   evaluateMultipleRecordsWithAssignedValues,
   generateSummary,
 } from "@/lib/pt-eqa-analysis";
+import * as XLSX from "xlsx";
+import fs from "fs/promises";
+import path from "path";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,8 +17,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    const content = await file.text();
     const filename = file.name;
+    let content: string;
+
+    // Handle Excel files
+    if (
+      filename.toLowerCase().endsWith(".xlsx") ||
+      filename.toLowerCase().endsWith(".xls")
+    ) {
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      content = XLSX.utils.sheet_to_csv(worksheet);
+    } else {
+      content = await file.text();
+    }
+
+    // Save the processed CSV to data/uploads
+    try {
+      const uploadDir = path.join(process.cwd(), "data", "uploads");
+      await fs.mkdir(uploadDir, { recursive: true });
+
+      const saveFilename = filename.replace(/\.(xlsx|xls)$/i, ".csv");
+      await fs.writeFile(path.join(uploadDir, saveFilename), content);
+      console.log(
+        `Saved uploaded file to ${path.join(uploadDir, saveFilename)}`
+      );
+    } catch (err) {
+      console.error("Failed to save uploaded file:", err);
+      // Continue processing even if save fails
+    }
 
     const parsed = processUniversalCSV(content, filename);
 
