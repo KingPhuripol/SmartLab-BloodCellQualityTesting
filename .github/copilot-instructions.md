@@ -20,8 +20,8 @@
 - [x] Create and Run Task
       VS Code task added to run Next.js dev server for ./app.
 
-- [ ] Launch the Project
-      Pending user confirmation to open the dev server in the browser.
+- [x] Launch the Project
+      Dev server is running and opened in the browser.
 
-- [ ] Ensure Documentation is Complete
-      README and HOW_TO_RUN updated for Node-only PT:EQA flow. Final pass pending.
+- [x] Ensure Documentation is Complete
+      README and HOW_TO_RUN updated for Node-only PT:EQA flow. Final pass completed.

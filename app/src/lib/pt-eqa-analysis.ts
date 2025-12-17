@@ -36,6 +36,33 @@ export interface PTEQAResult {
   grade: "Excellent" | "Good" | "Satisfactory" | "Unsatisfactory" | "Serious";
   status: "Pass" | "Fail";
   allowableError: number;
+
+  /** Assigned value stats used for Z-score (per model + parameter) */
+  assignedMean?: number;
+  assignedSD?: number;
+  assignedCVPercent?: number;
+  assignedNUsed?: number;
+}
+
+export type PTEQAParameter = keyof PTEQAConfig["allowableErrors"];
+
+export interface AssignedValueExcludedItem {
+  labCode: string;
+  value: number;
+  reason: "blunder" | "outlier";
+}
+
+export interface AssignedValueStat {
+  modelCode: string;
+  parameter: PTEQAParameter;
+  mean: number;
+  sd: number;
+  cvPercent: number;
+  nTotal: number;
+  nUsed: number;
+  nBlunder: number;
+  nOutlier: number;
+  excluded: AssignedValueExcludedItem[];
 }
 
 export interface PTEQASummary {
@@ -58,6 +85,134 @@ export interface PTEQASummary {
     averageZScore: number;
   }[];
   criticalIssues: PTEQAResult[];
+
+  /** Optional: assigned value stats used for Z-score */
+  assignedValues?: AssignedValueStat[];
+}
+
+function mean(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((s, v) => s + v, 0) / values.length;
+}
+
+function stdDev(values: number[], m: number): number {
+  if (values.length === 0) return 0;
+  const variance =
+    values.reduce((s, v) => s + Math.pow(v - m, 2), 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+function round(value: number, decimals: number): number {
+  if (!isFinite(value)) return 0;
+  const factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+}
+
+function computeAssignedValues(
+  records: StandardBloodTestRecord[]
+): AssignedValueStat[] {
+  const parameters: PTEQAParameter[] = [
+    "RBC",
+    "WBC",
+    "PLT",
+    "Hb",
+    "Hct",
+    "MCV",
+    "MCH",
+    "MCHC",
+  ];
+
+  const groups = new Map<
+    string,
+    {
+      modelCode: string;
+      parameter: PTEQAParameter;
+      items: { labCode: string; value: number }[];
+    }
+  >();
+
+  for (const record of records) {
+    for (const param of parameters) {
+      const measuredKey = `measured${param}` as keyof StandardBloodTestRecord;
+      const measured = record[measuredKey] as number | null;
+      if (measured === null || isNaN(measured) || measured === 0) continue;
+
+      const modelCode = record.modelCode;
+      const key = `${modelCode}::${param}`;
+      if (!groups.has(key)) {
+        groups.set(key, { modelCode, parameter: param, items: [] });
+      }
+      groups.get(key)!.items.push({ labCode: record.labCode, value: measured });
+    }
+  }
+
+  const stats: AssignedValueStat[] = [];
+
+  for (const [, group] of groups) {
+    const nTotal = group.items.length;
+    const valuesAll = group.items.map((x) => x.value);
+    const initialMean = mean(valuesAll);
+
+    // Blunder rule: value > mean*10 or value < mean/10 (computed from initial mean)
+    const blunders: AssignedValueExcludedItem[] = [];
+    const afterBlunder = group.items.filter((x) => {
+      if (!isFinite(initialMean) || initialMean <= 0) return true;
+      // Blunder: value > mean*10 OR value < mean/10
+      const isBlunder =
+        x.value > initialMean * 10 || x.value < initialMean / 10;
+      if (isBlunder)
+        blunders.push({
+          labCode: x.labCode,
+          value: x.value,
+          reason: "blunder",
+        });
+      return !isBlunder;
+    });
+
+    const values1 = afterBlunder.map((x) => x.value);
+    const mean1 = mean(values1);
+    const sd1 = stdDev(values1, mean1);
+
+    // Outlier rule (simple): |x - mean| > 3*sd (after blunder removal), single pass
+    const outliers: AssignedValueExcludedItem[] = [];
+    const afterOutlier = afterBlunder.filter((x) => {
+      if (!isFinite(sd1) || sd1 <= 0) return true;
+      const isOutlier = Math.abs(x.value - mean1) > 3 * sd1;
+      if (isOutlier)
+        outliers.push({
+          labCode: x.labCode,
+          value: x.value,
+          reason: "outlier",
+        });
+      return !isOutlier;
+    });
+
+    const values2 = afterOutlier.map((x) => x.value);
+    const finalMean = mean(values2);
+    const finalSd = stdDev(values2, finalMean);
+    const cvPercent = finalMean !== 0 ? (finalSd / finalMean) * 100 : 0;
+
+    stats.push({
+      modelCode: group.modelCode,
+      parameter: group.parameter,
+      mean: round(finalMean, 6),
+      sd: round(finalSd, 6),
+      cvPercent: round(cvPercent, 3),
+      nTotal,
+      nUsed: values2.length,
+      nBlunder: blunders.length,
+      nOutlier: outliers.length,
+      excluded: [...blunders, ...outliers],
+    });
+  }
+
+  // Sort for stable UI
+  stats.sort((a, b) => {
+    const byModel = a.modelCode.localeCompare(b.modelCode);
+    if (byModel !== 0) return byModel;
+    return a.parameter.localeCompare(b.parameter);
+  });
+  return stats;
 }
 
 // Default configuration based on CLIA and Proficiency Testing standards
@@ -179,6 +334,73 @@ export function evaluateRecord(
   });
 
   return results;
+}
+
+export function evaluateMultipleRecordsWithAssignedValues(
+  records: StandardBloodTestRecord[],
+  config: PTEQAConfig = DEFAULT_PT_EQA_CONFIG
+): { results: PTEQAResult[]; assignedValues: AssignedValueStat[] } {
+  const assignedValues = computeAssignedValues(records);
+  const assignedMap = new Map<string, AssignedValueStat>();
+  for (const s of assignedValues) {
+    assignedMap.set(`${s.modelCode}::${s.parameter}`, s);
+  }
+
+  const results: PTEQAResult[] = [];
+  const parameters: PTEQAParameter[] = [
+    "RBC",
+    "WBC",
+    "PLT",
+    "Hb",
+    "Hct",
+    "MCV",
+    "MCH",
+    "MCHC",
+  ];
+
+  for (const record of records) {
+    for (const param of parameters) {
+      const measuredKey = `measured${param}` as keyof StandardBloodTestRecord;
+      const measured = record[measuredKey] as number | null;
+      if (measured === null || isNaN(measured) || measured === 0) continue;
+
+      const assigned = assignedMap.get(`${record.modelCode}::${param}`);
+      if (!assigned) continue;
+
+      const referenceValue = assigned.mean;
+      const sd = assigned.sd;
+
+      // Use SD for Z-Score calculation as requested
+      const zScore =
+        sd > 0 ? Number(((measured - referenceValue) / sd).toFixed(2)) : 0;
+      const grade = assignGrade(zScore, config.zScoreThresholds);
+      const status = determineStatus(grade);
+
+      const difference = measured - referenceValue;
+      const percentDifference =
+        referenceValue !== 0 ? (difference / referenceValue) * 100 : 0;
+
+      results.push({
+        labCode: record.labCode,
+        modelCode: record.modelCode,
+        parameter: param,
+        measuredValue: measured,
+        referenceValue,
+        difference: Number(difference.toFixed(2)),
+        percentDifference: Number(percentDifference.toFixed(1)),
+        zScore,
+        grade,
+        status,
+        allowableError: config.allowableErrors[param],
+        assignedMean: assigned.mean,
+        assignedSD: assigned.sd,
+        assignedCVPercent: assigned.cvPercent,
+        assignedNUsed: assigned.nUsed,
+      });
+    }
+  }
+
+  return { results, assignedValues };
 }
 
 /**

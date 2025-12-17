@@ -5,7 +5,7 @@ help:
 	@echo ""
 	@echo "Development Mode (without Docker):"
 	@echo "  make dev-backend    - Start backend server (port 8000)"
-	@echo "  make dev-frontend   - Start frontend server (port 3001)"
+	@echo "  make dev-frontend   - Start frontend server (port 3002)"
 	@echo ""
 	@echo "Docker Mode:"
 	@echo "  make build          - Build Docker images"

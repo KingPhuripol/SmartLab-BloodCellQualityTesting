@@ -111,6 +111,20 @@ function safeParseFloat(value: string | undefined | null): number | null {
   return isNaN(parsed) ? null : parsed;
 }
 
+function normalizeCode(value: string | undefined | null): string {
+  const trimmed = (value ?? "").toString().trim();
+  if (!trimmed) return "";
+
+  // Convert numeric strings with trailing .0... to integer-like strings
+  // Examples: "602.0" -> "602", " 603.00 " -> "603"
+  if (/^-?\d+(?:\.0+)?$/.test(trimmed)) {
+    const asNumber = Number(trimmed);
+    if (Number.isFinite(asNumber)) return String(Math.trunc(asNumber));
+  }
+
+  return trimmed;
+}
+
 /**
  * Parse BloodData - Test01.csv format
  */
@@ -147,8 +161,8 @@ function parseBloodDataTest01(lines: string[][]): StandardBloodTestRecord[] {
       referenceMCHC: safeParseFloat(row[16]),
 
       // Equipment info
-      brandCode: row[17] || "600",
-      modelCode: row[18] || "602",
+      brandCode: normalizeCode(row[17]) || "600",
+      modelCode: normalizeCode(row[18]) || "602",
 
       source: "BloodData-Test01",
     };
@@ -197,8 +211,8 @@ function parseCombined(lines: string[][]): StandardBloodTestRecord[] {
       referenceMCHC: safeParseFloat(row[19]),
 
       // Equipment info
-      brandCode: row[22] || "500",
-      modelCode: row[34] || row[23] || "503",
+      brandCode: normalizeCode(row[22]) || "500",
+      modelCode: normalizeCode(row[34] || row[23]) || "503",
       modelName: row[27],
       type: row[33],
 
@@ -251,8 +265,8 @@ function parseMockupAV(lines: string[][]): StandardBloodTestRecord[] {
       referenceMCHC: safeParseFloat(row[19]),
 
       // Equipment info
-      brandCode: row[22] || "500",
-      modelCode: row[23] || "503",
+      brandCode: normalizeCode(row[22]) || "500",
+      modelCode: normalizeCode(row[23]) || "503",
       modelName: row[27],
       type: row.length > 33 ? row[33] : undefined,
 

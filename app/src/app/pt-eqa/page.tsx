@@ -22,6 +22,7 @@ import {
   FileText,
 } from "lucide-react";
 import type { PTEQAResult } from "@/lib/csv";
+import { generateSummary, type PTEQASummary } from "@/lib/pt-eqa-analysis";
 import { exportToCSV } from "@/lib/csv";
 import Collapsible from "@/components/Collapsible";
 import {
@@ -50,12 +51,7 @@ export default function PTEQAWizardPage() {
   const [files, setFiles] = useState<any[]>([]);
   const [results, setResults] = useState<PTEQAResult[]>([]);
   const [originalResults, setOriginalResults] = useState<PTEQAResult[]>([]);
-  const [summary, setSummary] = useState<{
-    passRate: number;
-    averageZScore: number;
-    gradeDistribution: Record<PTEQAResult["grade"], number>;
-    totalEvaluations: number;
-  } | null>(null);
+  const [summary, setSummary] = useState<PTEQASummary | null>(null);
 
   const [modelFilter, setModelFilter] = useState<string>("All");
   const [gradeFilter, setGradeFilter] = useState<string>("All");
@@ -114,6 +110,42 @@ export default function PTEQAWizardPage() {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    setError("");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/pt-eqa/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Upload failed");
+      }
+
+      const data = await res.json();
+      setMetadata(data.metadata || null);
+      setFiles(data.files || []);
+      const base: PTEQAResult[] = data.ptEqa?.results || [];
+      setOriginalResults(base);
+      setResults(base);
+      setSummary(data.ptEqa?.summary || null);
+      setStep(2);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const goNext = () => setStep((s) => Math.min(s + 1, 5) as Step);
   const goBack = () => setStep((s) => Math.max(s - 1, 1) as Step);
 
@@ -157,30 +189,10 @@ export default function PTEQAWizardPage() {
       return { ...r, zScore: z, grade: g, status } as PTEQAResult;
     });
 
-    const gradeCounts: Record<PTEQAResult["grade"], number> = {
-      Excellent: 0,
-      Good: 0,
-      Satisfactory: 0,
-      Unsatisfactory: 0,
-      Serious: 0,
-    };
-
-    let sumAbsZ = 0;
-    updated.forEach((r) => {
-      gradeCounts[r.grade]++;
-      sumAbsZ += Math.abs(r.zScore);
-    });
-
-    const total = Math.max(updated.length, 1);
-    const passCount =
-      gradeCounts.Excellent + gradeCounts.Good + gradeCounts.Satisfactory;
-
-    const newSummary = {
-      passRate: Number(((passCount / total) * 100).toFixed(1)),
-      averageZScore: Number((sumAbsZ / total).toFixed(2)),
-      gradeDistribution: gradeCounts,
-      totalEvaluations: updated.length,
-    };
+    const newSummary = generateSummary(updated);
+    if (summary?.assignedValues) {
+      newSummary.assignedValues = summary.assignedValues;
+    }
 
     setResults(updated);
     setSummary(newSummary);
@@ -212,6 +224,12 @@ export default function PTEQAWizardPage() {
     Satisfactory: "#eab308", // yellow-500
     Unsatisfactory: "#f97316", // orange-500
     Serious: "#ef4444", // red-500
+  };
+
+  const formatValue = (param: string, value: number) => {
+    if (param === "PLT") return value.toFixed(0);
+    if (["RBC", "WBC"].includes(param)) return value.toFixed(2);
+    return value.toFixed(1);
   };
 
   return (
@@ -356,9 +374,9 @@ export default function PTEQAWizardPage() {
               </div>
 
               {/* Upload Data */}
-              <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 hover:border-slate-400 transition-all bg-slate-50/50 flex flex-col justify-center items-center text-center">
-                <div className="bg-white p-4 rounded-full shadow-sm mb-4">
-                  <Upload className="h-8 w-8 text-slate-400" />
+              <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 hover:border-blue-400 transition-all bg-slate-50/50 flex flex-col justify-center items-center text-center group relative">
+                <div className="bg-white p-4 rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform">
+                  <Upload className="h-8 w-8 text-slate-400 group-hover:text-blue-500 transition-colors" />
                 </div>
                 <h3 className="font-bold text-lg text-slate-800 mb-2">
                   อัปโหลดไฟล์ใหม่
@@ -366,16 +384,18 @@ export default function PTEQAWizardPage() {
                 <p className="text-slate-500 text-sm mb-6 max-w-xs">
                   ลากไฟล์ CSV มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์จากคอมพิวเตอร์
                 </p>
-                <button
-                  className="px-6 py-2 bg-white border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 font-medium text-sm transition-colors"
-                  onClick={() =>
-                    alert(
-                      "ฟีเจอร์นี้กำลังอยู่ระหว่างการพัฒนา กรุณาใช้ 'ดึงข้อมูลจากระบบ'"
-                    )
-                  }
-                >
-                  เลือกไฟล์...
-                </button>
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={loading}
+                  />
+                  <span className="px-6 py-2 bg-white border border-slate-300 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-blue-600 font-medium text-sm transition-colors inline-block">
+                    เลือกไฟล์ CSV
+                  </span>
+                </label>
               </div>
             </div>
 
@@ -457,10 +477,97 @@ export default function PTEQAWizardPage() {
                 </div>
               </div>
 
+              {/* Assigned Values Statistics */}
+              {summary?.assignedValues && (
+                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-slate-50 px-5 py-3 border-b border-slate-200">
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-blue-600" />
+                      ค่าสถิติที่ใช้คำนวณ (Assigned Values Statistics)
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      แสดงค่า Mean, SD, %CV ที่คำนวณได้หลังจากตัด Blunder ({">"}
+                      10x Mean) และ Outlier (3SD)
+                    </p>
+                  </div>
+                  <div className="overflow-x-auto max-h-96">
+                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                      <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-semibold text-slate-600">
+                            Model
+                          </th>
+                          <th className="px-4 py-2 text-left font-semibold text-slate-600">
+                            Param
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-slate-600">
+                            Mean
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-slate-600">
+                            SD
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-slate-600">
+                            %CV
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-slate-600">
+                            Total
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-slate-600">
+                            Used
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-red-600">
+                            Blunder
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-orange-600">
+                            Outlier
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {summary.assignedValues.map((stat, i) => (
+                          <tr
+                            key={i}
+                            className="hover:bg-slate-50 transition-colors"
+                          >
+                            <td className="px-4 py-2 font-medium text-slate-900">
+                              {stat.modelCode}
+                            </td>
+                            <td className="px-4 py-2 text-slate-600">
+                              {stat.parameter}
+                            </td>
+                            <td className="px-4 py-2 text-right font-mono">
+                              {formatValue(stat.parameter, stat.mean)}
+                            </td>
+                            <td className="px-4 py-2 text-right font-mono">
+                              {formatValue(stat.parameter, stat.sd)}
+                            </td>
+                            <td className="px-4 py-2 text-right font-mono">
+                              {stat.cvPercent.toFixed(2)}%
+                            </td>
+                            <td className="px-4 py-2 text-right text-slate-500">
+                              {stat.nTotal}
+                            </td>
+                            <td className="px-4 py-2 text-right font-medium text-green-600">
+                              {stat.nUsed}
+                            </td>
+                            <td className="px-4 py-2 text-right text-red-600 font-medium">
+                              {stat.nBlunder}
+                            </td>
+                            <td className="px-4 py-2 text-right text-orange-600 font-medium">
+                              {stat.nOutlier}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* Criteria Settings */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Allowable Error */}
-                <div className="border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                <div className="border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow opacity-50 pointer-events-none grayscale">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="bg-blue-100 p-1.5 rounded-md">
                       <Activity className="h-4 w-4 text-blue-600" />
@@ -468,6 +575,9 @@ export default function PTEQAWizardPage() {
                     <h3 className="font-bold text-slate-800">
                       ค่าความคลาดเคลื่อนที่ยอมรับได้ (TEa)
                     </h3>
+                    <span className="text-xs text-red-500 ml-auto font-medium">
+                      (ไม่ถูกนำมาใช้คำนวณ Z-Score)
+                    </span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {Object.entries(allowableErrors).map(([k, v]) => (
@@ -644,6 +754,91 @@ export default function PTEQAWizardPage() {
                       {summary.gradeDistribution.Unsatisfactory +
                         summary.gradeDistribution.Serious}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Assigned Values Statistics (Summary) */}
+              {summary?.assignedValues && (
+                <div className="mb-8 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-blue-600" />
+                      ค่าสถิติที่ใช้คำนวณ (Assigned Values Statistics)
+                    </h3>
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById(
+                          "assigned-stats-table"
+                        );
+                        if (el) el.classList.toggle("hidden");
+                      }}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      แสดง/ซ่อน
+                    </button>
+                  </div>
+                  <div
+                    id="assigned-stats-table"
+                    className="overflow-x-auto max-h-64 hidden"
+                  >
+                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                      <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-semibold text-slate-600">
+                            Model
+                          </th>
+                          <th className="px-4 py-2 text-left font-semibold text-slate-600">
+                            Param
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-slate-600">
+                            Mean
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-slate-600">
+                            SD
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-slate-600">
+                            %CV
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-slate-600">
+                            Total
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold text-slate-600">
+                            Used
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white">
+                        {summary.assignedValues.map((stat, i) => (
+                          <tr
+                            key={i}
+                            className="hover:bg-slate-50 transition-colors"
+                          >
+                            <td className="px-4 py-2 font-medium text-slate-900">
+                              {stat.modelCode}
+                            </td>
+                            <td className="px-4 py-2 text-slate-600">
+                              {stat.parameter}
+                            </td>
+                            <td className="px-4 py-2 text-right font-mono">
+                              {formatValue(stat.parameter, stat.mean)}
+                            </td>
+                            <td className="px-4 py-2 text-right font-mono">
+                              {formatValue(stat.parameter, stat.sd)}
+                            </td>
+                            <td className="px-4 py-2 text-right font-mono">
+                              {stat.cvPercent.toFixed(2)}%
+                            </td>
+                            <td className="px-4 py-2 text-right text-slate-500">
+                              {stat.nTotal}
+                            </td>
+                            <td className="px-4 py-2 text-right font-medium text-green-600">
+                              {stat.nUsed}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
@@ -830,10 +1025,10 @@ export default function PTEQAWizardPage() {
                             {r.parameter}
                           </td>
                           <td className="px-6 py-3 text-sm text-right text-slate-600">
-                            {r.measuredValue.toFixed(2)}
+                            {formatValue(r.parameter, r.measuredValue)}
                           </td>
                           <td className="px-6 py-3 text-sm text-right text-slate-600">
-                            {r.referenceValue.toFixed(2)}
+                            {formatValue(r.parameter, r.referenceValue)}
                           </td>
                           <td
                             className={`px-6 py-3 text-sm text-right font-mono font-bold ${

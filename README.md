@@ -58,15 +58,15 @@ npm install
 npm run dev
 
 # 3. Access application
-open http://localhost:3000
+open http://localhost:3001
 ```
 
 ### Production Deployment
 
 See **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** for complete instructions on deploying to:
 
-- **Frontend**: Vercel (Next.js)
-- **Backend**: Railway / Render / Fly.io
+- **Full Stack**: Vercel (Next.js handles both frontend and API routes)
+- **Alternative**: Docker container on Railway / Render / Fly.io
 
 ---
 
@@ -265,7 +265,7 @@ npm start
 
 ```bash
 # Test API endpoint
-curl http://localhost:3000/api/pt-eqa/load
+curl http://localhost:3001/api/pt-eqa/load
 
 # Should return JSON with:
 # - metadata: { totalFiles, totalRecords, uniqueModels, evaluations }
@@ -402,7 +402,7 @@ npm run build
 ### For Developers
 
 - **Documentation**: This README + inline comments
-- **API Docs**: http://localhost:3000/api/docs (coming soon)
+- **API Docs**: http://localhost:3001/api/docs (coming soon)
 - **GitHub Issues**: (repository link)
 
 ---

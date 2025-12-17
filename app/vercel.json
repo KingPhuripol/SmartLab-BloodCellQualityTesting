@@ -1,15 +1,7 @@
 {
-  "version": 2,
-  "name": "smartlab-blood-cell-quality-testing",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
-  "env": {
-    "NEXT_PUBLIC_API_URL": "https://your-backend-api.railway.app"
-  },
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
   "headers": [
     {
       "source": "/api/(.*)",
@@ -25,12 +17,6 @@
           "value": "X-Requested-With, Content-Type, Authorization"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/"
     }
   ]
 }

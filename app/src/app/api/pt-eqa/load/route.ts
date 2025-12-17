@@ -7,7 +7,7 @@ import {
   type UniversalProcessedData,
 } from "@/lib/universal-csv-processor";
 import {
-  evaluateMultipleRecords,
+  evaluateMultipleRecordsWithAssignedValues,
   generateSummary,
   type PTEQAResult,
   type PTEQASummary,
@@ -120,11 +120,14 @@ export async function GET() {
     // Merge all processed data
     const mergedData = mergeProcessedData(processed);
 
-    // Perform PT:EQA evaluation on all records
-    const ptEqaResults = evaluateMultipleRecords(mergedData.records);
+    // Compute assigned values (mean/sd/%CV) per model+parameter (with blunder removal)
+    // and evaluate Z-scores against assigned mean/sd.
+    const { results: ptEqaResults, assignedValues } =
+      evaluateMultipleRecordsWithAssignedValues(mergedData.records);
 
     // Generate comprehensive summary
     const summary = generateSummary(ptEqaResults);
+    summary.assignedValues = assignedValues;
 
     return NextResponse.json({
       metadata: {
