@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       // On Vercel, we can only write to /tmp, and it's ephemeral.
       // For persistent storage, we'd need S3 or Blob storage.
       // For now, we'll skip saving on Vercel to avoid errors, or save to /tmp for immediate processing if needed.
-      
+
       if (!isVercel) {
         const uploadDir = path.join(process.cwd(), "data", "uploads");
         await fs.mkdir(uploadDir, { recursive: true });

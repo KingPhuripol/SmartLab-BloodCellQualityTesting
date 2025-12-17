@@ -45,6 +45,7 @@ export interface UniversalProcessedData {
   format:
     | "BloodData-Test01"
     | "Combined"
+    | "Standard"
     | "Mockup-AV"
     | "Mockup-E"
     | "Mockup-RAW"
@@ -70,6 +71,16 @@ export interface UniversalProcessedData {
 function detectCSVFormat(headers: string[]): UniversalProcessedData["format"] {
   const headerStr = headers.join(",").toLowerCase();
 
+  // Check for Standard format from Converter (Lab Code,Report,Measured RBC,Measured WBC,...)
+  if (
+    headerStr.includes("measured rbc") &&
+    headerStr.includes("reference rbc") &&
+    headerStr.includes("brand code") &&
+    headerStr.includes("model code")
+  ) {
+    return "Standard"; // Use Standard parser for converter format
+  }
+
   // Check for BloodData - Test01.csv format (Lab Code,A_RBC,A_WBC,...)
   if (
     headerStr.includes("lab code") &&
@@ -89,12 +100,9 @@ function detectCSVFormat(headers: string[]): UniversalProcessedData["format"] {
     return "Mockup-AV";
   }
 
-  // Check for Mockup-E or RAW format
-  if (headerStr.includes("type") && headerStr.includes("model code")) {
-    if (headerStr.includes("source_file")) {
-      return "Mockup-E";
-    }
-    return "Mockup-RAW";
+  // Check for Mockup-E format
+  if (headerStr.includes("type") && headerStr.includes("model code") && headerStr.includes("source_file")) {
+    return "Mockup-E";
   }
 
   return "Unknown";
@@ -119,10 +127,24 @@ function normalizeCode(value: string | undefined | null): string {
   const asNumber = Number(trimmed);
   if (!isNaN(asNumber) && Number.isFinite(asNumber)) {
     // Convert to integer string (removes decimals)
-    return String(Math.floor(Math.abs(asNumber)));
+    const intValue = Math.floor(Math.abs(asNumber));
+    // Only accept valid model codes (100-999)
+    if (intValue >= 100 && intValue <= 999) {
+      return String(intValue);
+    }
   }
 
-  return trimmed;
+  // Check if it starts with parentheses and contains a number like "(600) Mindray"
+  const match = trimmed.match(/\((\d{3})\)/);
+  if (match) {
+    const extracted = parseInt(match[1]);
+    if (extracted >= 100 && extracted <= 999) {
+      return String(extracted);
+    }
+  }
+
+  // If not a valid number, return empty string (will use fallback in parser)
+  return "";
 }
 
 /**
@@ -220,6 +242,58 @@ function parseCombined(lines: string[][]): StandardBloodTestRecord[] {
       remarks: row[29],
 
       source: "Combined",
+    };
+
+    records.push(record);
+  }
+
+  return records;
+}
+
+/**
+ * Parse Standard CSV format (from Converter: Lab Code,Report,Measured RBC,...)
+ */
+function parseStandardFormat(lines: string[][]): StandardBloodTestRecord[] {
+  const records: StandardBloodTestRecord[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const row = lines[i];
+    if (row.length < 19) continue;
+
+    const record: StandardBloodTestRecord = {
+      id: i,
+      labCode: row[0] || `LAB${String(i).padStart(5, "0")}`,
+      report: row[1],
+
+      // Measured values (columns 2-9)
+      measuredRBC: safeParseFloat(row[2]),
+      measuredWBC: safeParseFloat(row[3]),
+      measuredPLT: safeParseFloat(row[4]),
+      measuredHb: safeParseFloat(row[5]),
+      measuredHct: safeParseFloat(row[6]),
+      measuredMCV: safeParseFloat(row[7]),
+      measuredMCH: safeParseFloat(row[8]),
+      measuredMCHC: safeParseFloat(row[9]),
+
+      // Reference values (columns 10-17)
+      referenceRBC: safeParseFloat(row[10]),
+      referenceWBC: safeParseFloat(row[11]),
+      referencePLT: safeParseFloat(row[12]),
+      referenceHb: safeParseFloat(row[13]),
+      referenceHct: safeParseFloat(row[14]),
+      referenceMCV: safeParseFloat(row[15]),
+      referenceMCH: safeParseFloat(row[16]),
+      referenceMCHC: safeParseFloat(row[17]),
+
+      // Equipment info (columns 18-19)
+      brandCode: normalizeCode(row[18]) || "600",
+      modelCode: normalizeCode(row[19]) || "600",
+      modelName: row[20],
+      type: row[21],
+
+      submissionDate: row[22],
+      remarks: row[23],
+      source: row[24] || "Standard",
     };
 
     records.push(record);
@@ -388,6 +462,9 @@ export function processUniversalCSV(
   switch (format) {
     case "BloodData-Test01":
       records = parseBloodDataTest01(lines);
+      break;
+    case "Standard":
+      records = parseStandardFormat(lines);
       break;
     case "Combined":
       records = parseCombined(lines);
