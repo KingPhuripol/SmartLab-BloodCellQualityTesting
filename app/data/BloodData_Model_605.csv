@@ -1,0 +1,5 @@
+No,Lab Code,Lab Name,Report,Measured_RBC,Measured_WBC,Measured_PLT,Measured_Hb,Measured_Hct,Measured_MCV,Measured_MCH,Measured_MCHC,,Reference_RBC,Reference_WBC,Reference_PLT,Reference_Hb,Reference_Hct,Reference_MCV,Reference_MCH,Reference_MCHC,,Brand_Code,Brand_Name,Model_Code,Model_Description,Brand_Custom,Model_Custom,Model_Name,Submission_Date,Suggestion,Remarks,Defect_Note,Status,Status_Recheck,Labcode_HM,Type
+84,00084,โรงพยาบาลชัยภูมิรวมแพทย์,R,1.88,2,87,5,18,96.2,26.5,27.7,,,,,,,,,,,(600) Mindray,,605,,,,Mindray BC 3000 Plus,10 กันยายน 2568,,,,ส่งผลสมบูรณ์,,HM 1359,NGPH
+95,00095,คณะทันตแพทยศาสตร์ จุฬาลงกรณ์มหาวิทยาลัย,R,2.28,2.1,71,5.4,17.1,75.4,23.6,31.5,,,,,,,,,,,(600) Mindray,,605,,,,BC 3000 plus,17 กันยายน 2568,,,,ส่งผลสมบูรณ์,,HM 1270,GNPH
+227,00227,เฮลท์แลป คลินิกเทคนิคการแพทย์,R,2.29,2.1,75,5.4,17.7,77.2,23.5,31,,,,,,,,,,,(600) Mindray,,605,,,,BC-3000 plus,17 กันยายน 2568,,,,ส่งผลสมบูรณ์,,HM 1627,NGPH
+620,00621,โรงพยาบาลบัวใหญ่รวมแพทย์,R,2.16,2,92,5,20.4,94.8,23.1,24.5,,,,,,,,,,,(600) Mindray,,605,,,,BC3000Plus,10 กันยายน 2568,,,,ส่งผลสมบูรณ์,,HM 1747,NGPH

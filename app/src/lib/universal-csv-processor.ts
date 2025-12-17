@@ -46,6 +46,7 @@ export interface UniversalProcessedData {
     | "BloodData-Test01"
     | "Combined"
     | "Standard"
+    | "Mindray"
     | "Mockup-AV"
     | "Mockup-E"
     | "Mockup-RAW"
@@ -88,6 +89,15 @@ function detectCSVFormat(headers: string[]): UniversalProcessedData["format"] {
     headerStr.includes("b_rbc")
   ) {
     return "BloodData-Test01";
+  }
+
+  // Check for Mindray format with underscored columns (Measured_RBC, Reference_RBC, Model_Code)
+  if (
+    headerStr.includes("measured_rbc") &&
+    headerStr.includes("reference_rbc") &&
+    headerStr.includes("model_code")
+  ) {
+    return "Mockup-RAW"; // Use Mockup-RAW parser with adjusted indices
   }
 
   // Check for Combined_Test_Data.csv format (has many columns with Thai headers)
@@ -304,13 +314,64 @@ function parseStandardFormat(lines: string[][]): StandardBloodTestRecord[] {
 
 /**
  * Parse Mockup CSV formats (500-AV.csv, 503-AV.csv, etc.)
+ * Also used for Mindray format with columns: No,Lab Code,Lab Name,Report,Measured_RBC,...,Model_Code
  */
 function parseMockupAV(lines: string[][]): StandardBloodTestRecord[] {
   const records: StandardBloodTestRecord[] = [];
 
-  // Similar structure to Combined but slightly different column positions
+  // Check if this is Mindray format (has Measured_RBC) or old Mockup format
+  const header = lines[0].join(',').toLowerCase();
+  const isMindrayFormat = header.includes('measured_rbc') && header.includes('reference_rbc');
+
   for (let i = 1; i < lines.length; i++) {
     const row = lines[i];
+    
+    if (isMindrayFormat) {
+      // Mindray format: columns are 0-indexed
+      // Lab Code=1, Report=3, Measured(4-11), Reference(13-20), Brand=21, Model=23
+      if (row.length < 24) continue;
+
+      const record: StandardBloodTestRecord = {
+        id: i,
+        labCode: row[1] || `LAB${String(i).padStart(5, "0")}`,
+        report: row[3],
+
+        // Measured values (columns 4-11, 0-indexed)
+        measuredRBC: safeParseFloat(row[4]),
+        measuredWBC: safeParseFloat(row[5]),
+        measuredPLT: safeParseFloat(row[6]),
+        measuredHb: safeParseFloat(row[7]),
+        measuredHct: safeParseFloat(row[8]),
+        measuredMCV: safeParseFloat(row[9]),
+        measuredMCH: safeParseFloat(row[10]),
+        measuredMCHC: safeParseFloat(row[11]),
+
+        // Reference values (columns 13-20, 0-indexed)
+        referenceRBC: safeParseFloat(row[13]),
+        referenceWBC: safeParseFloat(row[14]),
+        referencePLT: safeParseFloat(row[15]),
+        referenceHb: safeParseFloat(row[16]),
+        referenceHct: safeParseFloat(row[17]),
+        referenceMCV: safeParseFloat(row[18]),
+        referenceMCH: safeParseFloat(row[19]),
+        referenceMCHC: safeParseFloat(row[20]),
+
+        // Equipment info
+        brandCode: normalizeCode(row[21]) || "600",
+        modelCode: normalizeCode(row[23]) || "600",
+        modelName: row[27],
+        type: row[35],
+
+        submissionDate: row[28],
+        remarks: row[30],
+        source: "Mindray",
+      };
+
+      records.push(record);
+      continue;
+    }
+
+    // Original Mockup format
     if (row.length < 23) continue;
 
     const record: StandardBloodTestRecord = {
