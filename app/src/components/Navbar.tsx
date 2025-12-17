@@ -52,7 +52,10 @@ export default function Navbar() {
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-slate-900 text-xl leading-none tracking-tight">
-                  SmartLab <span className="text-[10px] text-slate-400 font-normal">v0.1.1</span>
+                  SmartLab{" "}
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    v0.1.2
+                  </span>
                 </span>
                 <span className="text-[10px] text-blue-600 font-bold tracking-widest uppercase mt-1">
                   Quality Control
