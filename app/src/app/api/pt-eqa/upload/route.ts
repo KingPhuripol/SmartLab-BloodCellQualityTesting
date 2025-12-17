@@ -34,16 +34,23 @@ export async function POST(req: NextRequest) {
       content = await file.text();
     }
 
-    // Save the processed CSV to data/uploads
+    // Save the processed CSV to data/uploads (Local only, or /tmp on Vercel)
     try {
-      const uploadDir = path.join(process.cwd(), "data", "uploads");
-      await fs.mkdir(uploadDir, { recursive: true });
+      const isVercel = process.env.VERCEL === "1";
+      // On Vercel, we can only write to /tmp, and it's ephemeral.
+      // For persistent storage, we'd need S3 or Blob storage.
+      // For now, we'll skip saving on Vercel to avoid errors, or save to /tmp for immediate processing if needed.
+      
+      if (!isVercel) {
+        const uploadDir = path.join(process.cwd(), "data", "uploads");
+        await fs.mkdir(uploadDir, { recursive: true });
 
-      const saveFilename = filename.replace(/\.(xlsx|xls)$/i, ".csv");
-      await fs.writeFile(path.join(uploadDir, saveFilename), content);
-      console.log(
-        `Saved uploaded file to ${path.join(uploadDir, saveFilename)}`
-      );
+        const saveFilename = filename.replace(/\.(xlsx|xls)$/i, ".csv");
+        await fs.writeFile(path.join(uploadDir, saveFilename), content);
+        console.log(
+          `Saved uploaded file to ${path.join(uploadDir, saveFilename)}`
+        );
+      }
     } catch (err) {
       console.error("Failed to save uploaded file:", err);
       // Continue processing even if save fails
