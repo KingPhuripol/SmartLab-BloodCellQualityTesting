@@ -154,7 +154,16 @@ export default function PTEQAWizardPage() {
 
   const uniqueModels = Array.from(
     new Set(results.map((r) => r.modelCode))
-  ).sort();
+  ).sort((a, b) => {
+    // Sort numerically if both are numbers
+    const numA = Number(a);
+    const numB = Number(b);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numA - numB;
+    }
+    // Otherwise sort alphabetically
+    return a.localeCompare(b);
+  });
 
   const grades: PTEQAResult["grade"][] = [
     "Excellent",
