@@ -60,7 +60,21 @@ export async function GET() {
     // Define all data file locations
     const dataFiles: { path: string; priority: number }[] = [];
 
-    // 1. Add root files if they exist
+    // 1. Add all CSV files from app/data directory
+    const appDataDir = path.join(workspaceRoot, "data");
+    try {
+      const files = await fs.readdir(appDataDir);
+      for (const f of files) {
+        if (f.endsWith(".csv")) {
+          dataFiles.push({ path: path.join(appDataDir, f), priority: 1 });
+        }
+      }
+      console.log(`Found ${files.filter(f => f.endsWith('.csv')).length} CSV files in app/data`);
+    } catch (e) {
+      console.warn("Could not read app/data directory:", e);
+    }
+
+    // 2. Add root files if they exist (for backward compatibility)
     const rootFiles = ["BloodData - Test01.csv", "Combined_Test_Data.csv"];
     for (const f of rootFiles) {
       const p = path.join(dataRoot, f);
@@ -70,11 +84,12 @@ export async function GET() {
       } catch {}
     }
 
-    // 2. Add files from "Blood Test Mockup CSVs Sept 28 2025", "mockups", or "uploads"
+    // 3. Add files from subdirectories
     const mockupDirs = [
       path.join(dataRoot, "Blood Test Mockup CSVs Sept 28 2025"),
       path.join(dataRoot, "mockups"),
       path.join(dataRoot, "uploads"),
+      path.join(appDataDir, "uploads"),
     ];
 
     for (const mockupDir of mockupDirs) {
