@@ -155,13 +155,13 @@ export default function PTEQAWizardPage() {
   const uniqueModels = Array.from(
     new Set(results.map((r) => r.modelCode))
   ).sort((a, b) => {
-    // Sort numerically if both are numbers
-    const numA = Number(a);
-    const numB = Number(b);
+    // Always sort numerically (model codes should be integers)
+    const numA = parseInt(a, 10);
+    const numB = parseInt(b, 10);
     if (!isNaN(numA) && !isNaN(numB)) {
       return numA - numB;
     }
-    // Otherwise sort alphabetically
+    // Fallback to alphabetical if not numbers
     return a.localeCompare(b);
   });
 

@@ -115,11 +115,11 @@ function normalizeCode(value: string | undefined | null): string {
   const trimmed = (value ?? "").toString().trim();
   if (!trimmed) return "";
 
-  // Convert numeric strings with trailing .0... to integer-like strings
-  // Examples: "602.0" -> "602", " 603.00 " -> "603"
-  if (/^-?\d+(?:\.0+)?$/.test(trimmed)) {
-    const asNumber = Number(trimmed);
-    if (Number.isFinite(asNumber)) return String(Math.trunc(asNumber));
+  // Try to parse as number first (handles "602", "602.0", "602.00", etc.)
+  const asNumber = Number(trimmed);
+  if (!isNaN(asNumber) && Number.isFinite(asNumber)) {
+    // Convert to integer string (removes decimals)
+    return String(Math.floor(Math.abs(asNumber)));
   }
 
   return trimmed;
