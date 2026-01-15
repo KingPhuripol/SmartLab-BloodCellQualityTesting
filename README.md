@@ -47,26 +47,27 @@ Professional web application for hospital blood cell quality testing with **univ
 
 ## 🚀 Quick Start
 
-### Development Mode
+This project is containerized for easy deployment and development.
 
-```bash
-# 1. Install dependencies
-cd app
-npm install
+### Prerequisites
 
-# 2. Run development server
-npm run dev
+- Docker
+- Docker Compose
 
-# 3. Access application
-open http://localhost:3001
-```
+### Run the Application
 
-### Production Deployment
+1.  **Build and Start**:
+    ```bash
+    docker compose up --build -d
+    ```
 
-See **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** for complete instructions on deploying to:
+2.  **Access the Application**:
+    Open [http://localhost:3002](http://localhost:3002) in your browser.
 
-- **Full Stack**: Vercel (Next.js handles both frontend and API routes)
-- **Alternative**: Docker container on Railway / Render / Fly.io
+3.  **Stop the Application**:
+    ```bash
+    docker compose down
+    ```
 
 ---
 
@@ -74,78 +75,11 @@ See **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** for complete instructions o
 
 ```
 BloodCellQualityTesting/
-├── app/                                    # Next.js Frontend
-│   ├── src/
-│   │   ├── app/                           # Pages & Routes
-│   │   │   ├── page.tsx                   # Landing page
-│   │   │   ├── dashboard/                 # Dashboard
-│   │   │   ├── pt-eqa/                    # PT:EQA Wizard
-│   │   │   └── api/
-│   │   │       └── pt-eqa/load/          # Data loading API
-│   │   ├── lib/
-│   │   │   ├── universal-csv-processor.ts # 🆕 Universal CSV handler
-│   │   │   ├── pt-eqa-analysis.ts        # 🆕 PT:EQA evaluation engine
-│   │   │   ├── csv.ts                     # Legacy CSV utilities
-│   │   │   └── analysis.ts                # Analysis helpers
-│   │   ├── components/                    # React components
-│   │   └── types/                         # TypeScript types
-│   ├── package.json
-│   └── vercel.json                        # 🆕 Vercel deployment config
-│
-├── BloodData - Test01.csv                 # Primary test data
-├── Combined_Test_Data.csv                 # Combined dataset
-├── Blood Test Mockup CSVs Sept 28 2025/  # Mockup test files
-│   ├── 500-AV.csv
-│   ├── 503-AV.csv
-│   ├── 504-AV.csv
-│   └── ...
-│
-├── DEPLOYMENT_GUIDE.md                    # 🆕 Production deployment guide
-├── PRODUCTION_USER_GUIDE.md               # 🆕 End-user documentation
-├── HOW_TO_RUN.md                          # Development setup
-├── railway.toml                           # 🆕 Railway config
-├── render.yaml                            # 🆕 Render config
-└── README.md                              # This file
+├── app/                  # Next.js Application (Frontend & API)
+├── resources/            # Documentation and Data Files
+├── docker-compose.yml    # Docker Compose Configuration
+└── README.md             # Project Documentation
 ```
-
----
-
-## 🎓 Usage Guide
-
-### For Administrators
-
-1. **Initial Setup**:
-
-   ```bash
-   # Configure production environment
-   cp app/.env.production.example app/.env.production
-   # Edit and set NEXT_PUBLIC_API_URL
-   ```
-
-2. **Deploy System**: Follow [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
-
-3. **User Management**: Create accounts via dashboard
-
-### For Lab Supervisors
-
-1. **Access System**: Navigate to deployed URL
-2. **Login**: Use provided credentials
-3. **PT:EQA Workflow**:
-   - Load data via "PT:EQA Wizard"
-   - Review results and grades
-   - Export reports for records
-   - Document corrective actions
-
-See **[PRODUCTION_USER_GUIDE.md](./PRODUCTION_USER_GUIDE.md)** for detailed instructions.
-
-### For Analysts
-
-1. **Data Preparation**: Format CSV files per requirements
-2. **Run Evaluation**: Use PT:EQA Wizard
-3. **Review Results**: Filter by model, parameter, or grade
-4. **Export Data**: Download CSV for external analysis
-
----
 
 ## 🔬 PT:EQA Methodology
 

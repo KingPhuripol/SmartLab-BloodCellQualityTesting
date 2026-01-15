@@ -111,7 +111,11 @@ function detectCSVFormat(headers: string[]): UniversalProcessedData["format"] {
   }
 
   // Check for Mockup-E format
-  if (headerStr.includes("type") && headerStr.includes("model code") && headerStr.includes("source_file")) {
+  if (
+    headerStr.includes("type") &&
+    headerStr.includes("model code") &&
+    headerStr.includes("source_file")
+  ) {
     return "Mockup-E";
   }
 
@@ -320,12 +324,13 @@ function parseMockupAV(lines: string[][]): StandardBloodTestRecord[] {
   const records: StandardBloodTestRecord[] = [];
 
   // Check if this is Mindray format (has Measured_RBC) or old Mockup format
-  const header = lines[0].join(',').toLowerCase();
-  const isMindrayFormat = header.includes('measured_rbc') && header.includes('reference_rbc');
+  const header = lines[0].join(",").toLowerCase();
+  const isMindrayFormat =
+    header.includes("measured_rbc") && header.includes("reference_rbc");
 
   for (let i = 1; i < lines.length; i++) {
     const row = lines[i];
-    
+
     if (isMindrayFormat) {
       // Mindray format: columns are 0-indexed
       // Lab Code=1, Report=3, Measured(4-11), Reference(13-20), Brand=21, Model=23

@@ -112,7 +112,7 @@ SmartLab Hospital is a comprehensive laboratory information management system th
    ```
 
 4. **Open application**
-   - Navigate to `http://localhost:3000` (or the next available port)
+   - Navigate to `http://localhost:3001` (Grafana commonly uses `3000`; use `3001` for this app)
    - Use demo credentials to login:
      - Administrator: `admin/admin123`
      - Supervisor: `supervisor/super123`

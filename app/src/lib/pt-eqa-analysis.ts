@@ -147,15 +147,24 @@ function computeAssignedValues(
   }
 
   const stats: AssignedValueStat[] = [];
+  const globalGroups = new Map<
+    PTEQAParameter,
+    { labCode: string; value: number }[]
+  >();
 
-  for (const [, group] of groups) {
-    const nTotal = group.items.length;
-    const valuesAll = group.items.map((x) => x.value);
+  // Helper to compute stats for a set of values (single pass logic)
+  function computeStatsForItems(
+    items: { labCode: string; value: number }[],
+    modelCode: string,
+    parameter: PTEQAParameter
+  ): AssignedValueStat {
+    const nTotal = items.length;
+    const valuesAll = items.map((x) => x.value);
     const initialMean = mean(valuesAll);
 
     // Blunder rule: value > mean*10 or value < mean/10 (computed from initial mean)
     const blunders: AssignedValueExcludedItem[] = [];
-    const afterBlunder = group.items.filter((x) => {
+    const afterBlunder = items.filter((x) => {
       if (!isFinite(initialMean) || initialMean <= 0) return true;
       // Blunder: value > mean*10 OR value < mean/10
       const isBlunder =
@@ -192,9 +201,9 @@ function computeAssignedValues(
     const finalSd = stdDev(values2, finalMean);
     const cvPercent = finalMean !== 0 ? (finalSd / finalMean) * 100 : 0;
 
-    stats.push({
-      modelCode: group.modelCode,
-      parameter: group.parameter,
+    return {
+      modelCode,
+      parameter,
       mean: round(finalMean, 6),
       sd: round(finalSd, 6),
       cvPercent: round(cvPercent, 3),
@@ -203,14 +212,68 @@ function computeAssignedValues(
       nBlunder: blunders.length,
       nOutlier: outliers.length,
       excluded: [...blunders, ...outliers],
-    });
+    };
+  }
+
+  // 1. Group data by Model+Param AND gather Global data by Param
+  for (const [, group] of groups) {
+    // Add to global collection
+    if (!globalGroups.has(group.parameter)) {
+      globalGroups.set(group.parameter, []);
+    }
+    const globalList = globalGroups.get(group.parameter)!;
+    // We push straight to the list. 
+    // Note: items here are references, but they are just {labCode, value}, so it's fine.
+    globalList.push(...group.items);
+  }
+
+  // 2. Compute stats for each group
+  for (const [, group] of groups) {
+    const groupStat = computeStatsForItems(
+      group.items,
+      group.modelCode,
+      group.parameter
+    );
+
+    // If nUsed < 20, use Global Stats for that parameter
+    if (groupStat.nUsed < 20) {
+       const globalItems = globalGroups.get(group.parameter) || [];
+       if (globalItems.length > 0) {
+         const globalStat = computeStatsForItems(
+           globalItems,
+           "ALL",
+           group.parameter
+         );
+         // Override mean, sd, cvPercent with global values
+         // But keep nTotal, nUsed, etc. from the local group to show user the local data size
+         // Or maybe we should allow the user to see it's using assigned values?
+         // The UI shows "Mean", "SD" etc. If we replace them, the user sees global values.
+         // This is consistent with "Use mean SD combined... to evaluate".
+         groupStat.mean = globalStat.mean;
+         groupStat.sd = globalStat.sd;
+         groupStat.cvPercent = globalStat.cvPercent;
+         
+         // Should we mark it? Maybe not required, but helpful.
+         // For now, implicit.
+       }
+    }
+    stats.push(groupStat);
   }
 
   // Sort for stable UI
+  const PARAM_ORDER = ["RBC", "WBC", "Hb", "Hct", "MCV", "MCH", "MCHC", "PLT"];
   stats.sort((a, b) => {
     const byModel = a.modelCode.localeCompare(b.modelCode);
     if (byModel !== 0) return byModel;
-    return a.parameter.localeCompare(b.parameter);
+    
+    // Sort by specific parameter order
+    const idxA = PARAM_ORDER.indexOf(a.parameter);
+    const idxB = PARAM_ORDER.indexOf(b.parameter);
+    // If not found, put at end
+    const safeA = idxA === -1 ? 999 : idxA;
+    const safeB = idxB === -1 ? 999 : idxB;
+    
+    return safeA - safeB;
   });
   return stats;
 }

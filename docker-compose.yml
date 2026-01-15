@@ -12,10 +12,6 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3002
-    volumes:
-      - "./Blood Test Mockup CSVs Sept 28 2025:/app/Blood Test Mockup CSVs Sept 28 2025"
-      - "./BloodData - Test01.csv:/app/BloodData - Test01.csv"
-      - "./Combined_Test_Data.csv:/app/Combined_Test_Data.csv"
     networks:
       - smartlab-network
     restart: unless-stopped

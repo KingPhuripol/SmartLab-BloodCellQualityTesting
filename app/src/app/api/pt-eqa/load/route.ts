@@ -16,28 +16,14 @@ import {
 export async function GET() {
   try {
     const workspaceRoot = process.cwd();
+    const appDataDir = path.join(workspaceRoot, "data");
 
-    // Try multiple locations for data files
-    const candidateDirs = [
-      path.join(workspaceRoot, "data"),
-      path.join(workspaceRoot, ".."),
-      path.join(workspaceRoot, "..", ".."),
-      "/Users/king_phuripol/Work/SmartLab/BloodCellQualityTesting",
-    ];
-
-    // Return empty state if no data files exist (user needs to upload)
-    let dataRoot: string | null = null;
-    for (const d of candidateDirs) {
-      try {
-        await fs.access(d);
-        dataRoot = d;
-        break;
-      } catch {
-        // continue
-      }
-    }
-
-    if (!dataRoot) {
+    // On serverless (e.g. Vercel), reading bundled sample data is OK,
+    // but writing is not persistent. We keep this endpoint read-only.
+    // If no packaged data exists, return empty state (user needs to upload).
+    try {
+      await fs.access(appDataDir);
+    } catch {
       // No data directory found - return empty state instead of error
       return NextResponse.json({
         files: [],
@@ -46,7 +32,12 @@ export async function GET() {
           totalLabs: 0,
           totalParams: 0,
           passRate: 0,
-          gradeDistribution: { Excellent: 0, Good: 0, Satisfactory: 0, Unsatisfactory: 0 },
+          gradeDistribution: {
+            Excellent: 0,
+            Good: 0,
+            Satisfactory: 0,
+            Unsatisfactory: 0,
+          },
           modelPerformance: [],
         },
         metadata: {
@@ -61,7 +52,6 @@ export async function GET() {
     const dataFiles: { path: string; priority: number }[] = [];
 
     // 1. Add all CSV files from app/data directory
-    const appDataDir = path.join(workspaceRoot, "data");
     try {
       const files = await fs.readdir(appDataDir);
       for (const f of files) {
@@ -69,40 +59,26 @@ export async function GET() {
           dataFiles.push({ path: path.join(appDataDir, f), priority: 1 });
         }
       }
-      console.log(`Found ${files.filter(f => f.endsWith('.csv')).length} CSV files in app/data`);
+      console.log(
+        `Found ${
+          files.filter((f) => f.endsWith(".csv")).length
+        } CSV files in app/data`
+      );
     } catch (e) {
       console.warn("Could not read app/data directory:", e);
     }
 
-    // 2. Add root files if they exist (for backward compatibility)
-    const rootFiles = ["BloodData - Test01.csv", "Combined_Test_Data.csv"];
-    for (const f of rootFiles) {
-      const p = path.join(dataRoot, f);
-      try {
-        await fs.access(p);
-        dataFiles.push({ path: p, priority: 1 });
-      } catch {}
-    }
-
-    // 3. Add files from subdirectories
-    const mockupDirs = [
-      path.join(dataRoot, "Blood Test Mockup CSVs Sept 28 2025"),
-      path.join(dataRoot, "mockups"),
-      path.join(dataRoot, "uploads"),
-      path.join(appDataDir, "uploads"),
-    ];
-
-    for (const mockupDir of mockupDirs) {
-      try {
-        const files = await fs.readdir(mockupDir);
-        for (const f of files) {
-          if (f.endsWith(".csv")) {
-            dataFiles.push({ path: path.join(mockupDir, f), priority: 2 });
-          }
+    // 2. Add CSV files from app/data/uploads (if present)
+    const uploadsDir = path.join(appDataDir, "uploads");
+    try {
+      const files = await fs.readdir(uploadsDir);
+      for (const f of files) {
+        if (f.endsWith(".csv")) {
+          dataFiles.push({ path: path.join(uploadsDir, f), priority: 2 });
         }
-      } catch (e) {
-        // console.warn("Could not read mockup directory:", e);
       }
+    } catch {
+      // uploads dir may not exist on serverless; ignore
     }
 
     // Process all available files
@@ -140,7 +116,12 @@ export async function GET() {
           totalLabs: 0,
           totalParams: 0,
           passRate: 0,
-          gradeDistribution: { Excellent: 0, Good: 0, Satisfactory: 0, Unsatisfactory: 0 },
+          gradeDistribution: {
+            Excellent: 0,
+            Good: 0,
+            Satisfactory: 0,
+            Unsatisfactory: 0,
+          },
           modelPerformance: [],
         },
         metadata: {
@@ -165,7 +146,7 @@ export async function GET() {
 
     return NextResponse.json({
       metadata: {
-        dataRoot,
+        dataRoot: appDataDir,
         filesLoaded: loadedFiles,
         totalFiles: processed.length,
         totalRecords: mergedData.validRecords,
