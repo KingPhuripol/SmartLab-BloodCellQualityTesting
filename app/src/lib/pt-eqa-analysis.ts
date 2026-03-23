@@ -52,6 +52,46 @@ export interface AssignedValueExcludedItem {
   reason: "blunder" | "outlier";
 }
 
+export function detectBlunders(
+  items: { labCode: string; value: number }[],
+): AssignedValueExcludedItem[] {
+  const nTotal = items.length;
+  if (nTotal === 0) return [];
+  const valuesAll = items.map((x) => x.value);
+  const initialMean = valuesAll.reduce((s, v) => s + v, 0) / valuesAll.length;
+
+  const blunders: AssignedValueExcludedItem[] = [];
+  if (!isFinite(initialMean) || initialMean <= 0) return [];
+
+  for (const x of items) {
+    if (x.value > initialMean * 10 || x.value < initialMean / 10) {
+      blunders.push({ labCode: x.labCode, value: x.value, reason: "blunder" });
+    }
+  }
+  return blunders;
+}
+
+export function detectOutliers(
+  items: { labCode: string; value: number }[],
+): AssignedValueExcludedItem[] {
+  if (items.length === 0) return [];
+  const values = items.map((x) => x.value);
+  const m = values.reduce((s, v) => s + v, 0) / values.length;
+  const variance =
+    values.reduce((s, v) => s + Math.pow(v - m, 2), 0) / values.length;
+  const sd = Math.sqrt(variance);
+
+  const outliers: AssignedValueExcludedItem[] = [];
+  if (!isFinite(sd) || sd <= 0) return [];
+
+  for (const x of items) {
+    if (Math.abs(x.value - m) > 3 * sd) {
+      outliers.push({ labCode: x.labCode, value: x.value, reason: "outlier" });
+    }
+  }
+  return outliers;
+}
+
 export interface AssignedValueStat {
   modelCode: string;
   parameter: PTEQAParameter;
@@ -108,8 +148,8 @@ function round(value: number, decimals: number): number {
   return Math.round(value * factor) / factor;
 }
 
-function computeAssignedValues(
-  records: StandardBloodTestRecord[]
+export function computeAssignedValues(
+  records: StandardBloodTestRecord[],
 ): AssignedValueStat[] {
   const parameters: PTEQAParameter[] = [
     "RBC",
@@ -156,7 +196,7 @@ function computeAssignedValues(
   function computeStatsForItems(
     items: { labCode: string; value: number }[],
     modelCode: string,
-    parameter: PTEQAParameter
+    parameter: PTEQAParameter,
   ): AssignedValueStat {
     const nTotal = items.length;
     const valuesAll = items.map((x) => x.value);
@@ -222,7 +262,7 @@ function computeAssignedValues(
       globalGroups.set(group.parameter, []);
     }
     const globalList = globalGroups.get(group.parameter)!;
-    // We push straight to the list. 
+    // We push straight to the list.
     // Note: items here are references, but they are just {labCode, value}, so it's fine.
     globalList.push(...group.items);
   }
@@ -232,30 +272,30 @@ function computeAssignedValues(
     const groupStat = computeStatsForItems(
       group.items,
       group.modelCode,
-      group.parameter
+      group.parameter,
     );
 
     // If nUsed < 20, use Global Stats for that parameter
     if (groupStat.nUsed < 20) {
-       const globalItems = globalGroups.get(group.parameter) || [];
-       if (globalItems.length > 0) {
-         const globalStat = computeStatsForItems(
-           globalItems,
-           "ALL",
-           group.parameter
-         );
-         // Override mean, sd, cvPercent with global values
-         // But keep nTotal, nUsed, etc. from the local group to show user the local data size
-         // Or maybe we should allow the user to see it's using assigned values?
-         // The UI shows "Mean", "SD" etc. If we replace them, the user sees global values.
-         // This is consistent with "Use mean SD combined... to evaluate".
-         groupStat.mean = globalStat.mean;
-         groupStat.sd = globalStat.sd;
-         groupStat.cvPercent = globalStat.cvPercent;
-         
-         // Should we mark it? Maybe not required, but helpful.
-         // For now, implicit.
-       }
+      const globalItems = globalGroups.get(group.parameter) || [];
+      if (globalItems.length > 0) {
+        const globalStat = computeStatsForItems(
+          globalItems,
+          "ALL",
+          group.parameter,
+        );
+        // Override mean, sd, cvPercent with global values
+        // But keep nTotal, nUsed, etc. from the local group to show user the local data size
+        // Or maybe we should allow the user to see it's using assigned values?
+        // The UI shows "Mean", "SD" etc. If we replace them, the user sees global values.
+        // This is consistent with "Use mean SD combined... to evaluate".
+        groupStat.mean = globalStat.mean;
+        groupStat.sd = globalStat.sd;
+        groupStat.cvPercent = globalStat.cvPercent;
+
+        // Should we mark it? Maybe not required, but helpful.
+        // For now, implicit.
+      }
     }
     stats.push(groupStat);
   }
@@ -265,14 +305,14 @@ function computeAssignedValues(
   stats.sort((a, b) => {
     const byModel = a.modelCode.localeCompare(b.modelCode);
     if (byModel !== 0) return byModel;
-    
+
     // Sort by specific parameter order
     const idxA = PARAM_ORDER.indexOf(a.parameter);
     const idxB = PARAM_ORDER.indexOf(b.parameter);
     // If not found, put at end
     const safeA = idxA === -1 ? 999 : idxA;
     const safeB = idxB === -1 ? 999 : idxB;
-    
+
     return safeA - safeB;
   });
   return stats;
@@ -305,7 +345,7 @@ export const DEFAULT_PT_EQA_CONFIG: PTEQAConfig = {
 export function calculateZScore(
   measured: number,
   reference: number,
-  allowableError: number
+  allowableError: number,
 ): number {
   const difference = measured - reference;
   const zScore = difference / allowableError;
@@ -317,7 +357,7 @@ export function calculateZScore(
  */
 export function assignGrade(
   zScore: number,
-  thresholds: PTEQAConfig["zScoreThresholds"]
+  thresholds: PTEQAConfig["zScoreThresholds"],
 ): PTEQAResult["grade"] {
   const absZScore = Math.abs(zScore);
 
@@ -340,7 +380,7 @@ export function determineStatus(grade: PTEQAResult["grade"]): "Pass" | "Fail" {
  */
 export function evaluateRecord(
   record: StandardBloodTestRecord,
-  config: PTEQAConfig = DEFAULT_PT_EQA_CONFIG
+  config: PTEQAConfig = DEFAULT_PT_EQA_CONFIG,
 ): PTEQAResult[] {
   const results: PTEQAResult[] = [];
   const parameters: Array<keyof PTEQAConfig["allowableErrors"]> = [
@@ -401,7 +441,7 @@ export function evaluateRecord(
 
 export function evaluateMultipleRecordsWithAssignedValues(
   records: StandardBloodTestRecord[],
-  config: PTEQAConfig = DEFAULT_PT_EQA_CONFIG
+  config: PTEQAConfig = DEFAULT_PT_EQA_CONFIG,
 ): { results: PTEQAResult[]; assignedValues: AssignedValueStat[] } {
   const assignedValues = computeAssignedValues(records);
   const assignedMap = new Map<string, AssignedValueStat>();
@@ -471,7 +511,7 @@ export function evaluateMultipleRecordsWithAssignedValues(
  */
 export function evaluateMultipleRecords(
   records: StandardBloodTestRecord[],
-  config: PTEQAConfig = DEFAULT_PT_EQA_CONFIG
+  config: PTEQAConfig = DEFAULT_PT_EQA_CONFIG,
 ): PTEQAResult[] {
   const allResults: PTEQAResult[] = [];
 
@@ -514,7 +554,7 @@ export function generateSummary(results: PTEQAResult[]): PTEQASummary {
 
   const totalAbsZScore = results.reduce(
     (sum, r) => sum + Math.abs(r.zScore),
-    0
+    0,
   );
   const averageZScore = Number((totalAbsZScore / results.length).toFixed(2));
 
@@ -545,7 +585,7 @@ export function generateSummary(results: PTEQAResult[]): PTEQASummary {
       const passCount = modelResults.filter((r) => r.status === "Pass").length;
       const totalAbsZ = modelResults.reduce(
         (sum, r) => sum + Math.abs(r.zScore),
-        0
+        0,
       );
 
       return {
@@ -571,7 +611,7 @@ export function generateSummary(results: PTEQAResult[]): PTEQASummary {
       const passCount = paramResults.filter((r) => r.status === "Pass").length;
       const totalAbsZ = paramResults.reduce(
         (sum, r) => sum + Math.abs(r.zScore),
-        0
+        0,
       );
 
       return {
@@ -614,7 +654,7 @@ export function filterResults(
     minZScore?: number;
     maxZScore?: number;
     labCode?: string;
-  }
+  },
 ): PTEQAResult[] {
   return results.filter((r) => {
     if (filters.modelCode && r.modelCode !== filters.modelCode) return false;
@@ -645,7 +685,7 @@ export function filterResults(
  */
 export function exportPTEQAToCSV(
   results: PTEQAResult[],
-  summary?: PTEQASummary
+  summary?: PTEQASummary,
 ): string {
   const headers = [
     "Lab Code",
@@ -739,7 +779,7 @@ export interface PTTrend {
 
 export function analyzeTrends(
   historicalResults: PTEQAResult[][],
-  minRounds: number = 3
+  minRounds: number = 3,
 ): PTTrend[] {
   if (historicalResults.length < minRounds) {
     return [];

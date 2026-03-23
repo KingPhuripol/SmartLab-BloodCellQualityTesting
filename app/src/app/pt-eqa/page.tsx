@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
   FileSpreadsheet,
@@ -94,7 +95,7 @@ export default function PTEQAWizardPage() {
         throw new Error(
           errorData.error ||
             errorData.message ||
-            "ไม่สามารถโหลดข้อมูล PT:EQA ได้"
+            "ไม่สามารถโหลดข้อมูล PT:EQA ได้",
         );
       }
       const data = await res.json();
@@ -153,7 +154,7 @@ export default function PTEQAWizardPage() {
   const goBack = () => setStep((s) => Math.max(s - 1, 1) as Step);
 
   const uniqueModels = Array.from(
-    new Set(results.map((r) => r.modelCode))
+    new Set(results.map((r) => r.modelCode)),
   ).sort((a, b) => {
     // Always sort numerically (model codes should be integers)
     const numA = parseInt(a, 10);
@@ -292,8 +293,8 @@ export default function PTEQAWizardPage() {
                     item.n < step
                       ? "bg-green-500 border-green-500 text-white"
                       : item.n === step
-                      ? "bg-blue-600 border-blue-600 text-white shadow-lg scale-110"
-                      : "bg-white border-slate-300 text-slate-400"
+                        ? "bg-blue-600 border-blue-600 text-white shadow-lg scale-110"
+                        : "bg-white border-slate-300 text-slate-400"
                   }`}
                 >
                   {item.n < step ? (
@@ -540,7 +541,7 @@ export default function PTEQAWizardPage() {
                           .filter(
                             (stat) =>
                               modelFilter === "All" ||
-                              stat.modelCode === modelFilter
+                              stat.modelCode === modelFilter,
                           )
                           .map((stat, i) => (
                             <tr
@@ -694,7 +695,7 @@ export default function PTEQAWizardPage() {
                 <button
                   onClick={() =>
                     recomputeWithCriteria(
-                      originalResults.length ? originalResults : results
+                      originalResults.length ? originalResults : results,
                     )
                   }
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm shadow-sm transition-colors flex items-center gap-2"
@@ -787,7 +788,7 @@ export default function PTEQAWizardPage() {
                     <button
                       onClick={() => {
                         const el = document.getElementById(
-                          "assigned-stats-table"
+                          "assigned-stats-table",
                         );
                         if (el) el.classList.toggle("hidden");
                       }}
@@ -831,7 +832,7 @@ export default function PTEQAWizardPage() {
                           .filter(
                             (stat) =>
                               modelFilter === "All" ||
-                              stat.modelCode === modelFilter
+                              stat.modelCode === modelFilter,
                           )
                           .map((stat, i) => (
                             <tr
@@ -888,8 +889,8 @@ export default function PTEQAWizardPage() {
                               Satisfactory: 0,
                               Unsatisfactory: 0,
                               Serious: 0,
-                            } as Record<string, number>
-                          )
+                            } as Record<string, number>,
+                          ),
                         ).map(([k, v]) => ({ name: k, value: v }))}
                         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                       >
@@ -937,7 +938,7 @@ export default function PTEQAWizardPage() {
                             cur.n += 1;
                             map.set(key, cur);
                             return map;
-                          }, new Map<string, { model: string; sum: number; n: number }>())
+                          }, new Map<string, { model: string; sum: number; n: number }>()),
                         ).map(([, v]) => ({
                           model: v.model,
                           avg: Number((v.sum / v.n).toFixed(2)),
@@ -1080,10 +1081,10 @@ export default function PTEQAWizardPage() {
                                 r.grade === "Excellent"
                                   ? "bg-green-100 text-green-800"
                                   : r.grade === "Good"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : r.grade === "Satisfactory"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : r.grade === "Satisfactory"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
                               }`}
                             >
                               {r.grade}
@@ -1334,7 +1335,7 @@ export default function PTEQAWizardPage() {
                       results,
                       `PT_EQA_Results_${new Date()
                         .toISOString()
-                        .slice(0, 10)}.csv`
+                        .slice(0, 10)}.csv`,
                     )
                   }
                   className="px-8 py-4 bg-green-600 text-white rounded-xl hover:bg-green-700 shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 font-bold text-lg"

@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         const saveFilename = filename.replace(/\.(xlsx|xls)$/i, ".csv");
         await fs.writeFile(path.join(uploadDir, saveFilename), content);
         console.log(
-          `Saved uploaded file to ${path.join(uploadDir, saveFilename)}`
+          `Saved uploaded file to ${path.join(uploadDir, saveFilename)}`,
         );
       }
     } catch (err) {
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     if (parsed.validRecords === 0) {
       return NextResponse.json(
         { error: "No valid records found in file" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -90,13 +90,14 @@ export async function POST(req: NextRequest) {
             Object.entries(parsed.statistics).map(([key, stats]) => [
               key,
               { mean: stats.mean, std: stats.std, count: stats.count },
-            ])
+            ]),
           ),
         },
       ],
       ptEqa: {
         results: ptEqaResults,
         summary,
+        records: parsed.records,
       },
     });
   } catch (error: any) {

@@ -62,7 +62,7 @@ export async function GET() {
       console.log(
         `Found ${
           files.filter((f) => f.endsWith(".csv")).length
-        } CSV files in app/data`
+        } CSV files in app/data`,
       );
     } catch (e) {
       console.warn("Could not read app/data directory:", e);
@@ -96,10 +96,10 @@ export async function GET() {
         if (parsed.validRecords > 0) {
           processed.push(parsed);
           loadedFiles.push(
-            `${filename} (${parsed.format}, ${parsed.validRecords} records)`
+            `${filename} (${parsed.format}, ${parsed.validRecords} records)`,
           );
           console.log(
-            `✓ Loaded: ${filename} | Format: ${parsed.format} | Records: ${parsed.validRecords}`
+            `✓ Loaded: ${filename} | Format: ${parsed.format} | Records: ${parsed.validRecords}`,
           );
         }
       } catch (e: any) {
@@ -163,12 +163,13 @@ export async function GET() {
           Object.entries(p.statistics).map(([key, stats]) => [
             key,
             { mean: stats.mean, std: stats.std, count: stats.count },
-          ])
+          ]),
         ),
       })),
       ptEqa: {
         results: ptEqaResults,
         summary,
+        records: mergedData.records,
       },
     });
   } catch (error: any) {
@@ -179,7 +180,7 @@ export async function GET() {
         details: error.message,
         stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
